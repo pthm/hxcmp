@@ -1,7 +1,35 @@
 package hxcmp
 
-// Result[P] is returned from action handlers.
-// It provides a fluent builder for specifying flash messages, redirects, callbacks, etc.
+// Result[P] is returned from action handlers to control rendering and side effects.
+//
+// Result is a fluent builder that enables handlers to specify flash messages,
+// redirects, callbacks, events, and custom headers without writing directly
+// to the ResponseWriter. The framework processes the Result after the handler
+// returns, applying headers and calling Render as appropriate.
+//
+// Example patterns:
+//
+//	// Success - auto-render with updated props
+//	return hxcmp.OK(props)
+//
+//	// Success with flash message
+//	return hxcmp.OK(props).Flash("success", "Saved!")
+//
+//	// Error with fallback render
+//	return hxcmp.Err(props, err)
+//
+//	// Redirect via HX-Redirect header
+//	return hxcmp.Redirect[Props]("/dashboard")
+//
+//	// Trigger parent callback
+//	return hxcmp.OK(props).Callback(props.OnSave)
+//
+//	// Broadcast event for loose coupling
+//	return hxcmp.OK(props).Trigger("item-updated")
+//
+// Result is not error-as-value pattern abuse - it's a structured way to
+// communicate rendering intent to the framework. Errors are still errors
+// (via Err()), not control flow.
 type Result[P any] struct {
 	props    P
 	err      error
@@ -15,46 +43,106 @@ type Result[P any] struct {
 }
 
 // OK creates a success result that will auto-render with the given props.
+//
+// The framework calls component.Render(ctx, props) to produce the response.
+// Use this for the typical success case where the action updates props
+// and you want the updated view rendered.
 func OK[P any](props P) Result[P] {
 	return Result[P]{props: props}
 }
 
-// Err creates an error result. The error will be passed to the registry's OnError handler.
+// Err creates an error result that passes the error to OnError handler.
+//
+// The registry's OnError callback determines the response (typically 500).
+// Props are included so OnError can render a fallback view if desired.
+//
+// Hydration errors and decryption errors are automatically wrapped and
+// sent through OnError - handlers typically only return Err for domain
+// logic failures (validation, not found, permission denied).
 func Err[P any](props P, err error) Result[P] {
 	return Result[P]{props: props, err: err}
 }
 
 // Skip creates a result indicating the handler wrote its own response.
-// No auto-render will occur.
+//
+// No auto-render will occur. Use when the handler needs full control,
+// such as streaming responses, file downloads, or custom content types:
+//
+//	func (c *Component) handleDownload(ctx context.Context, props Props) Result[Props] {
+//	    w.Header().Set("Content-Type", "application/pdf")
+//	    io.Copy(w, file)
+//	    return hxcmp.Skip[Props]()
+//	}
 func Skip[P any]() Result[P] {
 	return Result[P]{skip: true}
 }
 
 // Redirect creates a result that will redirect via HX-Redirect header.
+//
+// HTMX intercepts this header and performs a client-side redirect.
+// Use for post-action navigation:
+//
+//	return hxcmp.Redirect[Props]("/dashboard")
 func Redirect[P any](url string) Result[P] {
 	var zero P
 	return Result[P]{props: zero, redirect: url}
 }
 
 // Flash adds a flash message (toast notification) to the result.
+//
+// Flash messages are rendered as out-of-band (OOB) swaps that append
+// to the #toasts container. Levels typically include "success", "error",
+// "warning", "info" (see FlashSuccess, FlashError constants).
+//
+//	return hxcmp.OK(props).Flash("success", "Item saved!")
+//
+// Multiple flashes can be chained:
+//
+//	return hxcmp.OK(props).
+//	    Flash("success", "Primary action completed").
+//	    Flash("info", "Notification sent")
 func (r Result[P]) Flash(level, message string) Result[P] {
 	r.flashes = append(r.flashes, Flash{Level: level, Message: message})
 	return r
 }
 
-// Callback triggers a parent callback.
+// Callback triggers a parent callback to enable child-to-parent communication.
+//
+// The callback is sent via HX-Trigger header as a custom event that HTMX
+// processes client-side. The hxcmp JavaScript extension handles triggering
+// the callback URL.
+//
+//	// Parent passes callback in props:
+//	childProps.OnSave = c.Refresh(props).Target("#list").AsCallback()
+//
+//	// Child invokes callback after action:
+//	return hxcmp.OK(props).Callback(props.OnSave)
 func (r Result[P]) Callback(cb Callback) Result[P] {
 	r.callback = &cb
 	return r
 }
 
-// Trigger emits an event via HX-Trigger header.
+// Trigger emits an event via HX-Trigger header for loose coupling.
+//
+// Other components can listen for this event using OnEvent():
+//
+//	// Emitter:
+//	return hxcmp.OK(props).Trigger("item-updated")
+//
+//	// Listener:
+//	c.RefreshList(props).OnEvent("item-updated")
+//
+// This pattern decouples components - the emitter doesn't know who's listening.
 func (r Result[P]) Trigger(event string) Result[P] {
 	r.trigger = event
 	return r
 }
 
-// Header sets a response header.
+// Header sets a custom response header.
+//
+// Use for cache control, rate limiting metadata, or other HTTP semantics:
+//
+//	return hxcmp.OK(props).Header("Cache-Control", "no-store")
 func (r Result[P]) Header(key, value string) Result[P] {
 	if r.headers == nil {
 		r.headers = make(map[string]string)
@@ -64,6 +152,11 @@ func (r Result[P]) Header(key, value string) Result[P] {
 }
 
 // Status sets the HTTP status code.
+//
+// The default is 200 for OK results. Use this to signal other success
+// codes (201 Created, 204 No Content) or client errors (400, 404, 422):
+//
+//	return hxcmp.OK(props).Status(http.StatusCreated)
 func (r Result[P]) Status(code int) Result[P] {
 	r.status = code
 	return r
@@ -104,7 +197,7 @@ func (r Result[P]) GetHeaders() map[string]string {
 	return r.headers
 }
 
-// GetStatus returns the HTTP status code.
+// GetStatus returns the HTTP status code (0 means not set, use default 200).
 func (r Result[P]) GetStatus() int {
 	return r.status
 }

@@ -9,19 +9,37 @@ import (
 	"github.com/a-h/templ"
 )
 
-// ActionBuilder configures action registration (e.g., HTTP method).
+// ActionBuilder configures action registration (e.g., HTTP method override).
+//
+// Returned by Component.Action() to allow optional method override:
+//
+//	c.Action("edit", handler)  // POST by default
+//	c.Action("raw", handler).Method(http.MethodGet)
 type ActionBuilder struct {
 	action *actionDef
 }
 
 // Method overrides the default POST method for an action.
+//
+// Use for idempotent actions that should use GET, or for semantic deletions
+// that should use DELETE:
+//
+//	c.Action("raw", c.handleRaw).Method(http.MethodGet)
+//	c.Action("delete", c.handleDelete).Method(http.MethodDelete)
 func (ab *ActionBuilder) Method(m string) *ActionBuilder {
 	ab.action.method = m
 	return ab
 }
 
 // Action represents a component action with HTMX configuration.
-// Uses fluent builder pattern for configuration.
+//
+// Provides a fluent builder for constructing HTMX attributes. Generated
+// code produces typed action methods that return *Action:
+//
+//	c.Edit(props).Target("#editor").Confirm("Save?").Attrs()
+//
+// The builder exposes HTMX functionality directly rather than hiding it,
+// enabling full control over swap strategies, targets, and triggers.
 type Action struct {
 	url       string
 	method    string
@@ -35,12 +53,12 @@ type Action struct {
 }
 
 // NewAction creates a new action with URL and method.
-// This is called by generated code.
+// Called by generated code and Component.Refresh().
 func NewAction(url, method string) *Action {
 	return &Action{
 		url:    url,
 		method: method,
-		swap:   SwapOuter, // Default
+		swap:   SwapOuter, // Default to replacing the entire element
 	}
 }
 
@@ -49,36 +67,57 @@ func NewAction(url, method string) *Action {
 // ═══════════════════════════════════════════════════════════════
 
 // Target sets the CSS selector for the target element.
+//
+// This determines which element receives the response HTML:
+//
+//	c.Edit(props).Target("#editor")     // Replace element with id="editor"
+//	c.Edit(props).Target(".form-area")  // Replace first matching class
 func (a *Action) Target(selector string) *Action {
 	a.target = selector
 	return a
 }
 
 // TargetThis sets the target to "this" (the triggering element).
+//
+// Useful for buttons that update themselves:
+//
+//	<button {...c.Toggle(props).TargetThis().Attrs()}>Toggle</button>
 func (a *Action) TargetThis() *Action {
 	a.target = "this"
 	return a
 }
 
 // TargetClosest sets the target to the closest matching ancestor.
+//
+// Searches up the DOM tree from the trigger element:
+//
+//	c.Delete(props).TargetClosest(".item")  // Replace parent .item
 func (a *Action) TargetClosest(selector string) *Action {
 	a.target = "closest " + selector
 	return a
 }
 
 // TargetFind sets the target to a descendant of the triggering element.
+//
+// Searches down the DOM tree from the trigger element:
+//
+//	c.LoadDetails(props).TargetFind(".details")
 func (a *Action) TargetFind(selector string) *Action {
 	a.target = "find " + selector
 	return a
 }
 
 // TargetNext sets the target to the next sibling matching selector.
+//
+//	c.Expand(props).TargetNext(".content")
 func (a *Action) TargetNext(selector string) *Action {
 	a.target = "next " + selector
 	return a
 }
 
 // TargetPrevious sets the target to the previous sibling matching selector.
+//
+//	c.Collapse(props).TargetPrevious(".header")
 func (a *Action) TargetPrevious(selector string) *Action {
 	a.target = "previous " + selector
 	return a
@@ -88,55 +127,80 @@ func (a *Action) TargetPrevious(selector string) *Action {
 // Swapping
 // ═══════════════════════════════════════════════════════════════
 
-// Swap sets the swap mode.
+// Swap sets the swap mode (how the response HTML replaces the target).
+//
+// See SwapMode constants for available strategies.
 func (a *Action) Swap(mode SwapMode) *Action {
 	a.swap = mode
 	return a
 }
 
-// SwapOuter sets swap to outerHTML (replace entire element).
+// SwapOuter sets swap to outerHTML (replace entire element including tag).
+// This is the default swap mode.
 func (a *Action) SwapOuter() *Action {
 	a.swap = SwapOuter
 	return a
 }
 
-// SwapInner sets swap to innerHTML (replace contents).
+// SwapInner sets swap to innerHTML (replace contents, keep outer tag).
+//
+// Useful for updating containers without replacing the container itself:
+//
+//	<div id="list">{...c.RefreshList(props).Target("#list").SwapInner().Attrs()}</div>
 func (a *Action) SwapInner() *Action {
 	a.swap = SwapInner
 	return a
 }
 
 // SwapBeforeEnd appends to end of target's contents.
+//
+// Adds new content as the last child:
+//
+//	c.AddItem(props).Target("#list").SwapBeforeEnd()  // Append to list
 func (a *Action) SwapBeforeEnd() *Action {
 	a.swap = SwapBeforeEnd
 	return a
 }
 
-// SwapAfterEnd inserts after the target element.
+// SwapAfterEnd inserts after the target element (as next sibling).
 func (a *Action) SwapAfterEnd() *Action {
 	a.swap = SwapAfterEnd
 	return a
 }
 
-// SwapBeforeBegin inserts before the target element.
+// SwapBeforeBegin inserts before the target element (as previous sibling).
 func (a *Action) SwapBeforeBegin() *Action {
 	a.swap = SwapBeforeBegin
 	return a
 }
 
 // SwapAfterBegin prepends to start of target's contents.
+//
+// Adds new content as the first child:
+//
+//	c.AddItem(props).Target("#list").SwapAfterBegin()  // Prepend to list
 func (a *Action) SwapAfterBegin() *Action {
 	a.swap = SwapAfterBegin
 	return a
 }
 
 // SwapDelete removes the target element.
+//
+// Use with empty response to delete elements:
+//
+//	c.Delete(props).TargetClosest(".item").SwapDelete()
 func (a *Action) SwapDelete() *Action {
 	a.swap = SwapDelete
 	return a
 }
 
 // SwapNone performs no swap (useful for side-effects only).
+//
+// The action executes but the response is discarded. Use when you only
+// care about server-side effects (logging, analytics) or when using
+// events/callbacks to notify other components:
+//
+//	c.Track(props).SwapNone()
 func (a *Action) SwapNone() *Action {
 	a.swap = SwapNone
 	return a
@@ -146,31 +210,50 @@ func (a *Action) SwapNone() *Action {
 // Triggers
 // ═══════════════════════════════════════════════════════════════
 
-// Every sets polling interval.
+// Every sets polling interval for periodic updates.
+//
+//	c.RefreshStats(props).Every(5 * time.Second)
 func (a *Action) Every(d time.Duration) *Action {
 	a.trigger = "every " + formatDuration(d)
 	return a
 }
 
 // OnEvent listens for a custom event from body.
+//
+// Use for loose coupling between components:
+//
+//	c.RefreshList(props).OnEvent("item-updated")
+//	// Another component: return hxcmp.OK(props).Trigger("item-updated")
 func (a *Action) OnEvent(event string) *Action {
 	a.trigger = event + " from:body"
 	return a
 }
 
 // OnLoad triggers on element load.
+//
+// Fires once when the element appears in the DOM:
+//
+//	c.LoadDetails(props).OnLoad()
 func (a *Action) OnLoad() *Action {
 	a.trigger = "load"
 	return a
 }
 
 // OnIntersect triggers when element enters viewport (once).
+//
+// Useful for lazy-loading content below the fold:
+//
+//	c.LoadComments(props).OnIntersect()
 func (a *Action) OnIntersect() *Action {
 	a.trigger = "intersect once"
 	return a
 }
 
 // OnRevealed triggers when element is scrolled into view.
+//
+// Similar to OnIntersect but fires on every scroll into view:
+//
+//	c.TrackView(props).OnRevealed()
 func (a *Action) OnRevealed() *Action {
 	a.trigger = "revealed"
 	return a
@@ -181,24 +264,39 @@ func (a *Action) OnRevealed() *Action {
 // ═══════════════════════════════════════════════════════════════
 
 // Confirm shows a confirmation dialog before the action.
+//
+//	c.Delete(props).Confirm("Are you sure?")
 func (a *Action) Confirm(message string) *Action {
 	a.confirm = message
 	return a
 }
 
 // Indicator sets the CSS selector for the loading indicator.
+//
+// The matched element receives the "htmx-request" class during the request:
+//
+//	c.Submit(props).Indicator("#spinner")
 func (a *Action) Indicator(selector string) *Action {
 	a.indicator = selector
 	return a
 }
 
 // PushURL enables URL push to browser history.
+//
+// Updates the browser address bar with the request URL, enabling
+// back/forward navigation:
+//
+//	c.ShowDetails(props).PushURL()
 func (a *Action) PushURL() *Action {
 	a.pushURL = true
 	return a
 }
 
 // Vals sets additional values to include with the request.
+//
+// Sends extra data as JSON in the hx-vals attribute:
+//
+//	c.Filter(props).Vals(map[string]any{"page": 2})
 func (a *Action) Vals(v map[string]any) *Action {
 	a.vals = v
 	return a
@@ -209,7 +307,12 @@ func (a *Action) Vals(v map[string]any) *Action {
 // ═══════════════════════════════════════════════════════════════
 
 // Attrs returns HTMX attributes for spreading in templ.
-// Usage: <button {...c.Edit(props).Attrs()}>Edit</button>
+//
+// This is the terminal method that produces the final attribute map:
+//
+//	<button {...c.Edit(props).Target("#editor").Confirm("Save?").Attrs()}>
+//	    Save
+//	</button>
 func (a *Action) Attrs() templ.Attributes {
 	attrs := templ.Attributes{}
 
@@ -254,7 +357,11 @@ func (a *Action) Attrs() templ.Attributes {
 }
 
 // AsLink returns attributes for an <a> tag.
-// Usage: <a {...c.Raw(props).AsLink()}>View Raw</a>
+//
+// Produces a plain href attribute without HTMX. Use for actions that
+// should work without JavaScript:
+//
+//	<a {...c.ViewRaw(props).AsLink()}>View Raw</a>
 func (a *Action) AsLink() templ.Attributes {
 	return templ.Attributes{
 		"href": a.url,
@@ -262,13 +369,20 @@ func (a *Action) AsLink() templ.Attributes {
 }
 
 // URL returns just the action URL.
-// Useful for manual attribute construction.
+//
+// Useful for manual attribute construction or passing to JavaScript:
+//
+//	data-action-url={c.Submit(props).URL()}
 func (a *Action) URL() string {
 	return a.url
 }
 
-// AsCallback converts the action to a Callback.
-// Usage: OnSubmit: c.Refresh(props).Target("#list").AsCallback()
+// AsCallback converts the action to a Callback for parent-child communication.
+//
+// Pass callbacks in props to enable child components to notify parents:
+//
+//	childProps.OnSave = c.Refresh(props).Target("#list").AsCallback()
+//	// Child handler: return hxcmp.OK(props).Callback(props.OnSave)
 func (a *Action) AsCallback() Callback {
 	return Callback{
 		URL:    a.url,

@@ -12,6 +12,9 @@ import (
 )
 
 // TestResult holds the result of rendering a component for testing.
+//
+// Provides convenience methods for asserting on HTML content, headers,
+// status codes, events, flashes, and redirects.
 type TestResult struct {
 	HTML            string
 	StatusCode      int
@@ -22,13 +25,23 @@ type TestResult struct {
 }
 
 // TestableComponent combines Hydrater and Renderer for testing.
+//
+// Most components will satisfy this interface automatically by implementing
+// the required lifecycle methods.
 type TestableComponent[P any] interface {
 	Hydrater[P]
 	Renderer[P]
 }
 
 // TestRender renders a component and returns testable output.
-// It runs the full hydration and render lifecycle.
+//
+// It runs the full hydration and render lifecycle without HTTP overhead.
+// Use this for pure unit tests of component rendering logic:
+//
+//	result, err := hxcmp.TestRender(comp, props)
+//	if !result.HTMLContains("expected text") {
+//	    t.Fatal("missing expected content")
+//	}
 func TestRender[P any](comp TestableComponent[P], props P) (*TestResult, error) {
 	ctx := context.Background()
 
@@ -52,6 +65,12 @@ func TestRender[P any](comp TestableComponent[P], props P) (*TestResult, error) 
 }
 
 // TestRenderWithContext renders a component with a custom context.
+//
+// Use this when testing components that read values from context
+// (user authentication, request-scoped data):
+//
+//	ctx := context.WithValue(context.Background(), "user", testUser)
+//	result, err := hxcmp.TestRenderWithContext(ctx, comp, props)
 func TestRenderWithContext[P any](ctx context.Context, comp TestableComponent[P], props P) (*TestResult, error) {
 	// Run hydration
 	if err := comp.Hydrate(ctx, &props); err != nil {
@@ -73,6 +92,17 @@ func TestRenderWithContext[P any](ctx context.Context, comp TestableComponent[P]
 }
 
 // TestAction simulates an action request against an HXComponent.
+//
+// This tests the full HTTP lifecycle including decoding, hydration,
+// handler execution, and response rendering. Use this for integration
+// tests of action handlers:
+//
+//	result, err := hxcmp.TestAction(comp, editURL, "POST", map[string]string{
+//	    "name": "new name",
+//	})
+//	if !result.IsOK() {
+//	    t.Fatal("expected success")
+//	}
 func TestAction(
 	comp HXComponent,
 	actionURL string,
@@ -125,6 +155,12 @@ func TestAction(
 }
 
 // TestActionWithContext simulates an action request with a custom context.
+//
+// Use this for testing actions that require authenticated users or other
+// context-scoped data:
+//
+//	ctx := context.WithValue(context.Background(), "userID", 123)
+//	result, err := hxcmp.TestActionWithContext(ctx, comp, actionURL, "POST", formData)
 func TestActionWithContext(
 	ctx context.Context,
 	comp HXComponent,
@@ -179,11 +215,21 @@ func TestActionWithContext(
 }
 
 // TestGet simulates a GET request (render) against an HXComponent.
+//
+// Convenience wrapper for TestAction with GET method:
+//
+//	result, err := hxcmp.TestGet(comp, renderURL)
 func TestGet(comp HXComponent, url string) (*TestResult, error) {
 	return TestAction(comp, url, http.MethodGet, nil)
 }
 
 // TestPost simulates a POST request against an HXComponent.
+//
+// Convenience wrapper for TestAction with POST method:
+//
+//	result, err := hxcmp.TestPost(comp, actionURL, map[string]string{
+//	    "field": "value",
+//	})
 func TestPost(comp HXComponent, url string, formData map[string]string) (*TestResult, error) {
 	return TestAction(comp, url, http.MethodPost, formData)
 }
@@ -392,6 +438,14 @@ func parseFlashesFromHTML(html string) []Flash {
 }
 
 // TestRequestBuilder provides a fluent interface for building test requests.
+//
+// Use this when you need fine-grained control over request construction:
+//
+//	result, err := hxcmp.NewTestRequest("POST", actionURL).
+//	    WithFormData("name", "value").
+//	    WithHeader("X-Custom", "header").
+//	    WithContext(ctx).
+//	    Execute(comp)
 type TestRequestBuilder struct {
 	method   string
 	url      string
@@ -495,7 +549,16 @@ func (b *TestRequestBuilder) Execute(comp HXComponent) (*TestResult, error) {
 }
 
 // MockHydrater wraps a component and provides a custom hydration function.
-// Useful for injecting test data without needing real dependencies.
+//
+// Useful for injecting test data without needing real dependencies like
+// databases or external services:
+//
+//	mockHydrate := func(ctx context.Context, props *Props) error {
+//	    props.Repo = testRepo  // Inject test data
+//	    return nil
+//	}
+//	mock := hxcmp.NewMockHydrater(comp, mockHydrate)
+//	result, err := hxcmp.TestRender(mock, props)
 type MockHydrater[P any] struct {
 	Component    TestableComponent[P]
 	HydrateFunc  func(ctx context.Context, props *P) error
@@ -522,6 +585,12 @@ func (m *MockHydrater[P]) Render(ctx context.Context, props P) templ.Component {
 }
 
 // LastHydratedProps returns the props from the last Hydrate call.
+//
+// Useful for verifying that hydration was called with expected props:
+//
+//	mock.Hydrate(ctx, &props)
+//	lastProps := mock.LastHydratedProps()
+//	if lastProps.ID != expectedID { ... }
 func (m *MockHydrater[P]) LastHydratedProps() *P {
 	return m.hydrateProps
 }

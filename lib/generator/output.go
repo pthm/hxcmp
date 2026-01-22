@@ -46,12 +46,12 @@ func (g *Generator) generateComponent(pkgPath, pkgName string, comp *ComponentIn
 // renderTemplate renders the generated code template.
 func (g *Generator) renderTemplate(pkgName string, comp *ComponentInfo) ([]byte, error) {
 	tmpl, err := template.New("hx").Funcs(template.FuncMap{
-		"title":       strings.Title,
-		"lower":       strings.ToLower,
-		"upper":       strings.ToUpper,
+		"title":        strings.Title,
+		"lower":        strings.ToLower,
+		"upper":        strings.ToUpper,
 		"camelToTitle": camelToTitle,
-		"encodeField": encodeFieldCode,
-		"decodeField": decodeFieldCode,
+		"encodeField":  encodeFieldCode,
+		"decodeField":  decodeFieldCode,
 	}).Parse(hxTemplate)
 	if err != nil {
 		return nil, err
