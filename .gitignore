@@ -1,0 +1,40 @@
+# Generated files (regenerate with: hxcmp generate ./... && templ generate ./...)
+*_hx.go
+*_templ.go
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test and coverage
+coverage.out
+coverage.html
+*.prof
+
+# Build output
+/bin/
+/dist/
