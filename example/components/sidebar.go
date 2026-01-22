@@ -10,8 +10,7 @@ import (
 
 // SidebarProps defines the props for the Sidebar component.
 type SidebarProps struct {
-	CurrentStatus string         `hx:"status,omitempty"`
-	OnFilter      hxcmp.Callback `hx:"cb,omitempty"`
+	CurrentStatus string `hx:"status,omitempty"`
 	// Note: CurrentTags would need special handling for arrays
 }
 
@@ -42,7 +41,7 @@ func (c *Sidebar) Render(ctx context.Context, props SidebarProps) templ.Componen
 	return sidebarTemplate(c, props)
 }
 
-// handleFilter applies filters and triggers callback.
+// handleFilter applies filters and emits filter:changed event.
 func (c *Sidebar) handleFilter(ctx context.Context, props SidebarProps, r *http.Request) hxcmp.Result[SidebarProps] {
 	if err := r.ParseForm(); err != nil {
 		return hxcmp.Err(props, err)
@@ -51,26 +50,18 @@ func (c *Sidebar) handleFilter(ctx context.Context, props SidebarProps, r *http.
 	// Update props with selected filter
 	props.CurrentStatus = r.FormValue("status")
 
-	result := hxcmp.OK(props)
-	if !props.OnFilter.IsZero() {
-		// Pass the current status to the callback so the todolist can filter
-		result = result.Callback(props.OnFilter.WithVals(map[string]any{
-			"status": props.CurrentStatus,
-		}))
-	}
-	return result
+	// Emit event so listeners (e.g., TodoList) can refresh with new filter
+	return hxcmp.OK(props).Trigger("filter:changed", map[string]any{
+		"status": props.CurrentStatus,
+	})
 }
 
 // handleClear clears all filters.
 func (c *Sidebar) handleClear(ctx context.Context, props SidebarProps, r *http.Request) hxcmp.Result[SidebarProps] {
 	props.CurrentStatus = ""
 
-	result := hxcmp.OK(props)
-	if !props.OnFilter.IsZero() {
-		// Pass empty status to clear the filter
-		result = result.Callback(props.OnFilter.WithVals(map[string]any{
-			"status": "",
-		}))
-	}
-	return result.Flash(hxcmp.FlashInfo, "Filters cleared")
+	// Emit event with empty status to clear the filter
+	return hxcmp.OK(props).
+		Trigger("filter:changed", map[string]any{"status": ""}).
+		Flash(hxcmp.FlashInfo, "Filters cleared")
 }

@@ -1,16 +1,37 @@
 // hxcmp-ext.js
-// HTMX extension for hxcmp callbacks and toast auto-dismiss.
+// HTMX extension for hxcmp event data injection and toast auto-dismiss.
 // Load after htmx.js: <script src="/static/hxcmp-ext.js"></script>
 
 (function() {
     'use strict';
 
     function init() {
-        // Listen for hxcmp:callback events triggered via HX-Trigger header.
+        // Inject event data into HTMX requests triggered by custom events.
+        // When a component emits Trigger("event", data), listeners receive
+        // the data as request parameters automatically.
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            var triggeringEvent = evt.detail.triggeringEvent;
+            if (!triggeringEvent || !triggeringEvent.detail) {
+                return;
+            }
+
+            var data = triggeringEvent.detail;
+            if (typeof data !== 'object' || data === null) {
+                return;
+            }
+
+            // Inject each key from the event detail into request parameters
+            for (var key in data) {
+                if (data.hasOwnProperty(key)) {
+                    evt.detail.parameters[key] = data[key];
+                }
+            }
+        });
+
+        // [Deprecated] Listen for hxcmp:callback events.
+        // Callbacks are deprecated in favor of Trigger with data.
         document.body.addEventListener('hxcmp:callback', function(evt) {
             var detail = evt.detail || {};
-
-            // Support both direct detail and nested structure from HX-Trigger.
             var data = detail.value || detail;
 
             if (!data.url) {
@@ -18,7 +39,6 @@
                 return;
             }
 
-            // Build URL with vals as query params if present.
             var url = data.url;
             if (data.vals && typeof data.vals === 'object') {
                 var params = new URLSearchParams();
@@ -33,7 +53,6 @@
                 }
             }
 
-            // Issue the callback request using HTMX.
             htmx.ajax('GET', url, {
                 target: data.target || 'body',
                 swap: data.swap || 'outerHTML'
@@ -49,7 +68,7 @@
                     toast.classList.add('toast-fade-out');
                     setTimeout(function() {
                         toast.remove();
-                    }, 300); // Match CSS animation duration.
+                    }, 300);
                 }, delay);
             });
         });
@@ -57,12 +76,9 @@
         console.log('hxcmp extension loaded');
     }
 
-    // Wait for DOM to be ready before attaching event listeners.
-    // This ensures document.body exists when the script is in <head>.
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
-        // DOM already loaded (script is deferred or at end of body)
         init();
     }
 })();

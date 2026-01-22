@@ -26,15 +26,11 @@ templ Layout() {
 				</header>
 				<div class="layout">
 					<aside class="sidebar">
-						@components.SidebarCmp().Render(ctx, components.SidebarProps{
-							OnFilter: components.TodoListCmp().Refresh(components.TodoListProps{}).Target("#todo-list").AsCallback(),
-						})
+						@components.SidebarCmp().Render(ctx, components.SidebarProps{})
 					</aside>
 					<main class="main">
 						<div class="add-section">
-							@components.AddTodoCmp().Render(ctx, components.AddTodoProps{
-								OnAdd: components.TodoListCmp().Refresh(components.TodoListProps{}).Target("#todo-list").AsCallback(),
-							})
+							@components.AddTodoCmp().Render(ctx, components.AddTodoProps{})
 						</div>
 						<div class="todo-list-section">
 							@components.TodoListCmp().RenderHydrated(ctx, components.TodoListProps{})

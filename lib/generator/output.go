@@ -367,7 +367,7 @@ func (c *{{.Component.TypeName}}) handleResult(w http.ResponseWriter, r *http.Re
 		return
 	}
 	// Handle triggers (callback and/or event)
-	if triggerHeader := hxcmp.BuildTriggerHeader(result.GetCallback(), result.GetTrigger()); triggerHeader != "" {
+	if triggerHeader := hxcmp.BuildTriggerHeader(result.GetCallback(), result.GetTrigger(), result.GetTriggerData()); triggerHeader != "" {
 		w.Header().Set("HX-Trigger", triggerHeader)
 	}
 	if result.ShouldSkip() {

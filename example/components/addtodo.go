@@ -11,7 +11,7 @@ import (
 
 // AddTodoProps defines the props for the AddTodo component.
 type AddTodoProps struct {
-	OnAdd hxcmp.Callback `hx:"cb,omitempty"`
+	// No props needed - this component emits events instead of callbacks
 }
 
 // AddTodo handles adding new todos.
@@ -61,10 +61,8 @@ func (c *AddTodo) handleAdd(ctx context.Context, props AddTodoProps, r *http.Req
 
 	c.store.Add(title, description, tags)
 
-	result := hxcmp.OK(props)
-	if !props.OnAdd.IsZero() {
-		result = result.Callback(props.OnAdd)
-	}
-	// Trigger event for loosely-coupled listeners (e.g., Stats component)
-	return result.Flash(hxcmp.FlashSuccess, "Todo added!").Trigger("todo:added")
+	// Emit event so listeners (TodoList, Stats) can refresh
+	return hxcmp.OK(props).
+		Flash(hxcmp.FlashSuccess, "Todo added!").
+		Trigger("todo:added")
 }

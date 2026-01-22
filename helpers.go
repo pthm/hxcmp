@@ -100,41 +100,51 @@ func TargetID(r *http.Request) string {
 
 // BuildTriggerHeader builds a properly formatted HX-Trigger header value.
 //
-// When both callback and trigger are present, they must be merged into a
-// single JSON object. HTMX expects either bare event names or a JSON object,
-// but not both mixed with commas.
+// Supports three cases:
+//  1. Simple event name: "item-updated" -> "item-updated"
+//  2. Event with data: "filter:changed" + {"status": "active"} -> {"filter:changed": {"status": "active"}}
+//  3. Legacy callback (deprecated): merges callback into JSON object
+//
+// When data is provided with an event, HTMX fires the event with evt.detail
+// set to the data object. The hxcmp JS extension injects this data into
+// listener requests as parameters.
 //
 // Used by generated code in handleResult.
-func BuildTriggerHeader(cb *Callback, trigger string) string {
+func BuildTriggerHeader(cb *Callback, trigger string, triggerData map[string]any) string {
 	if cb == nil && trigger == "" {
 		return ""
 	}
 
-	// If only trigger (and no callback), return as simple event name
-	if cb == nil {
+	// If only trigger with no data and no callback, return as simple event name
+	if cb == nil && triggerData == nil {
 		return trigger
 	}
 
-	// If callback exists, we need JSON format
-	// Build a merged JSON object with callback and trigger
+	// Need JSON format for data or callback
 	merged := make(map[string]any)
 
-	// Add callback event
-	cbData := map[string]any{"url": cb.URL}
-	if cb.Target != "" {
-		cbData["target"] = cb.Target
-	}
-	if cb.Swap != "" {
-		cbData["swap"] = cb.Swap
-	}
-	if len(cb.Vals) > 0 {
-		cbData["vals"] = cb.Vals
-	}
-	merged["hxcmp:callback"] = cbData
-
-	// Add trigger event (if present)
+	// Add trigger event with data
 	if trigger != "" {
-		merged[trigger] = true
+		if triggerData != nil {
+			merged[trigger] = triggerData
+		} else {
+			merged[trigger] = true
+		}
+	}
+
+	// Add callback event (deprecated path)
+	if cb != nil {
+		cbData := map[string]any{"url": cb.URL}
+		if cb.Target != "" {
+			cbData["target"] = cb.Target
+		}
+		if cb.Swap != "" {
+			cbData["swap"] = cb.Swap
+		}
+		if len(cb.Vals) > 0 {
+			cbData["vals"] = cb.Vals
+		}
+		merged["hxcmp:callback"] = cbData
 	}
 
 	data, _ := json.Marshal(merged)

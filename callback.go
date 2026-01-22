@@ -5,28 +5,25 @@ import "encoding/json"
 // Callback is a signed/encrypted reference to a component action for
 // child-to-parent communication.
 //
-// Callbacks enable directed communication where a parent component passes
-// an action reference in props, and the child invokes it after completing
-// an action. This is safer and more explicit than event broadcasting.
+// Deprecated: Use event-based communication with Trigger instead. Events are
+// more HTMX-native and decouple components. This type will be removed in a
+// future version.
 //
-// Example:
+// Old callback pattern:
 //
 //	// Parent creates callback and passes to child:
 //	childProps.OnSave = c.RefreshList(props).Target("#list").AsCallback()
 //
-//	// Child invokes callback after saving:
-//	func (c *Child) handleSave(ctx context.Context, props Props) Result[Props] {
-//	    // ... save logic ...
-//	    return hxcmp.OK(props).Callback(props.OnSave)
-//	}
+//	// Child invokes callback:
+//	return hxcmp.OK(props).Callback(props.OnSave)
 //
-// Security mode (signed vs encrypted) inherits from the target component.
-// The callback URL contains encoded props, so it's as secure as any other
-// component action.
+// New event pattern:
 //
-// Callbacks are transmitted via HX-Trigger header and processed client-side
-// by the hxcmp JavaScript extension, which triggers the callback's URL with
-// the specified target and swap mode.
+//	// Child emits event with data:
+//	return hxcmp.OK(props).Trigger("item:saved", map[string]any{"id": item.ID})
+//
+//	// Parent listens in template:
+//	c.RefreshList(props).OnEvent("item:saved").Attrs()
 type Callback struct {
 	URL    string         `json:"u"`           // Action URL with encoded props
 	Target string         `json:"t,omitempty"` // Target selector
@@ -36,20 +33,14 @@ type Callback struct {
 
 // IsZero returns true if the callback is empty/unset.
 //
-// Use this to check if a callback was provided before invoking it:
-//
-//	if !props.OnSave.IsZero() {
-//	    return hxcmp.OK(props).Callback(props.OnSave)
-//	}
+// Deprecated: Callbacks are deprecated. Use Trigger with data instead.
 func (cb Callback) IsZero() bool {
 	return cb.URL == ""
 }
 
 // TriggerJSON returns the JSON payload for HX-Trigger header.
 //
-// The hxcmp JavaScript extension listens for "hxcmp:callback" events
-// and triggers the callback URL. This is called by generated code when
-// processing Result.Callback().
+// Deprecated: Callbacks are deprecated. Use Trigger with data instead.
 func (cb Callback) TriggerJSON() string {
 	payload := map[string]any{
 		"hxcmp:callback": map[string]any{
@@ -71,8 +62,7 @@ func (cb Callback) TriggerJSON() string {
 
 // CallbackFromMap reconstructs a Callback from a decoded map.
 //
-// Used when callbacks are embedded in props and need to be deserialized
-// from the generic decoder output.
+// Deprecated: Callbacks are deprecated. Use Trigger with data instead.
 func CallbackFromMap(m map[string]any) Callback {
 	cb := Callback{}
 	if v, ok := m["u"].(string); ok {
@@ -91,11 +81,10 @@ func CallbackFromMap(m map[string]any) Callback {
 }
 
 // WithVals returns a copy of the callback with the specified values.
-// These values will be appended as query parameters when the callback is triggered.
 //
-// Example:
+// Deprecated: Callbacks are deprecated. Use Trigger with data instead:
 //
-//	return hxcmp.OK(props).Callback(props.OnFilter.WithVals(map[string]any{"status": "pending"}))
+//	return hxcmp.OK(props).Trigger("filter:changed", map[string]any{"status": "pending"})
 func (cb Callback) WithVals(vals map[string]any) Callback {
 	cb.Vals = vals
 	return cb

@@ -3,8 +3,8 @@ package hxcmp
 // Result[P] is returned from action handlers to control rendering and side effects.
 //
 // Result is a fluent builder that enables handlers to specify flash messages,
-// redirects, callbacks, events, and custom headers without writing directly
-// to the ResponseWriter. The framework processes the Result after the handler
+// redirects, events, and custom headers without writing directly to the
+// ResponseWriter. The framework processes the Result after the handler
 // returns, applying headers and calling Render as appropriate.
 //
 // Example patterns:
@@ -21,25 +21,26 @@ package hxcmp
 //	// Redirect via HX-Redirect header
 //	return hxcmp.Redirect[Props]("/dashboard")
 //
-//	// Trigger parent callback
-//	return hxcmp.OK(props).Callback(props.OnSave)
-//
 //	// Broadcast event for loose coupling
 //	return hxcmp.OK(props).Trigger("item-updated")
+//
+//	// Broadcast event with data (listeners receive as request params)
+//	return hxcmp.OK(props).Trigger("filter:changed", map[string]any{"status": "active"})
 //
 // Result is not error-as-value pattern abuse - it's a structured way to
 // communicate rendering intent to the framework. Errors are still errors
 // (via Err()), not control flow.
 type Result[P any] struct {
-	props    P
-	err      error
-	redirect string
-	flashes  []Flash
-	trigger  string
-	callback *Callback
-	headers  map[string]string
-	status   int
-	skip     bool
+	props       P
+	err         error
+	redirect    string
+	flashes     []Flash
+	trigger     string
+	triggerData map[string]any
+	callback    *Callback // Deprecated: use Trigger with data instead
+	headers     map[string]string
+	status      int
+	skip        bool
 }
 
 // OK creates a success result that will auto-render with the given props.
@@ -108,33 +109,42 @@ func (r Result[P]) Flash(level, message string) Result[P] {
 
 // Callback triggers a parent callback to enable child-to-parent communication.
 //
-// The callback is sent via HX-Trigger header as a custom event that HTMX
-// processes client-side. The hxcmp JavaScript extension handles triggering
-// the callback URL.
+// Deprecated: Use Trigger with data instead. The event-based approach is more
+// HTMX-native and decouples components. Callbacks will be removed in a future version.
 //
-//	// Parent passes callback in props:
-//	childProps.OnSave = c.Refresh(props).Target("#list").AsCallback()
-//
-//	// Child invokes callback after action:
+//	// Old callback pattern:
 //	return hxcmp.OK(props).Callback(props.OnSave)
+//
+//	// New event pattern:
+//	return hxcmp.OK(props).Trigger("item:saved", map[string]any{"id": item.ID})
 func (r Result[P]) Callback(cb Callback) Result[P] {
 	r.callback = &cb
 	return r
 }
 
-// Trigger emits an event via HX-Trigger header for loose coupling.
+// Trigger emits an event via HX-Trigger header for component communication.
 //
 // Other components can listen for this event using OnEvent():
 //
-//	// Emitter:
+//	// Emitter (no data):
 //	return hxcmp.OK(props).Trigger("item-updated")
 //
-//	// Listener:
-//	c.RefreshList(props).OnEvent("item-updated")
+//	// Emitter (with data - listeners receive as request params):
+//	return hxcmp.OK(props).Trigger("filter:changed", map[string]any{"status": "active"})
+//
+//	// Listener (in template):
+//	c.Refresh(props).OnEvent("filter:changed").Attrs()
+//
+// When data is provided, it's sent as part of the HX-Trigger header and
+// automatically injected into listener requests as parameters by the
+// hxcmp JavaScript extension.
 //
 // This pattern decouples components - the emitter doesn't know who's listening.
-func (r Result[P]) Trigger(event string) Result[P] {
+func (r Result[P]) Trigger(event string, data ...map[string]any) Result[P] {
 	r.trigger = event
+	if len(data) > 0 {
+		r.triggerData = data[0]
+	}
 	return r
 }
 
@@ -182,12 +192,19 @@ func (r Result[P]) GetFlashes() []Flash {
 	return r.flashes
 }
 
-// GetTrigger returns the trigger event.
+// GetTrigger returns the trigger event name.
 func (r Result[P]) GetTrigger() string {
 	return r.trigger
 }
 
+// GetTriggerData returns the trigger event data.
+func (r Result[P]) GetTriggerData() map[string]any {
+	return r.triggerData
+}
+
 // GetCallback returns the callback.
+//
+// Deprecated: Callbacks are deprecated in favor of Trigger with data.
 func (r Result[P]) GetCallback() *Callback {
 	return r.callback
 }

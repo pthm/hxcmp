@@ -234,12 +234,20 @@ func (a *Action) Every(d time.Duration) *Action {
 
 // OnEvent listens for a custom event from body.
 //
-// Use for loose coupling between components:
+// Use for loose coupling between components. Can be chained for multiple events:
 //
-//	c.RefreshList(props).OnEvent("item-updated")
+//	c.RefreshList(props).OnEvent("item-updated").OnEvent("filter-changed")
 //	// Another component: return hxcmp.OK(props).Trigger("item-updated")
+//
+// Events with data are supported - the hxcmp JS extension automatically
+// injects event data into request parameters.
 func (a *Action) OnEvent(event string) *Action {
-	a.trigger = event + " from:body"
+	eventTrigger := event + " from:body"
+	if a.trigger == "" {
+		a.trigger = eventTrigger
+	} else {
+		a.trigger = a.trigger + ", " + eventTrigger
+	}
 	return a
 }
 
@@ -415,10 +423,14 @@ func (a *Action) URL() string {
 
 // AsCallback converts the action to a Callback for parent-child communication.
 //
-// Pass callbacks in props to enable child components to notify parents:
+// Deprecated: Use event-based communication instead. Have the child emit an
+// event with Trigger, and have the parent listen with OnEvent:
 //
-//	childProps.OnSave = c.Refresh(props).Target("#list").AsCallback()
-//	// Child handler: return hxcmp.OK(props).Callback(props.OnSave)
+//	// Child emits event:
+//	return hxcmp.OK(props).Trigger("item:saved", map[string]any{"id": item.ID})
+//
+//	// Parent listens in template:
+//	c.RefreshList(props).OnEvent("item:saved").Attrs()
 func (a *Action) AsCallback() Callback {
 	return Callback{
 		URL:    a.url,

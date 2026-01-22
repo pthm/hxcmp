@@ -1,7 +1,12 @@
 package components
 
 templ todoListTemplate(props TodoListProps) {
-	<div id="todo-list" class="todo-list">
+	// Listen for events from other components to refresh the list
+	<div
+		id="todo-list"
+		class="todo-list"
+		{ TodoListCmp().Refresh(props).OnEvent("todo:added").OnEvent("todo:changed").OnEvent("filter:changed").Attrs()... }
+	>
 		if len(props.Todos) == 0 {
 			<div class="empty-state">
 				<p>No todos found.</p>
@@ -27,7 +32,6 @@ templ todoItemInList(listProps TodoListProps, todo *Todo) {
 					class="toggle-btn"
 					{ TodoItemCmp().Toggle(TodoItemProps{
 						TodoID: todo.ID,
-						OnChange: TodoListCmp().Refresh(listProps).Target("#todo-list").AsCallback(),
 					}).TargetClosest(".todo-item-wrapper").Indicator(".toggle-btn").Attrs()... }
 				>
 					if todo.IsCompleted() {
@@ -58,7 +62,6 @@ templ todoItemInList(listProps TodoListProps, todo *Todo) {
 					class="delete-btn"
 					{ TodoItemCmp().Delete(TodoItemProps{
 						TodoID: todo.ID,
-						OnChange: TodoListCmp().Refresh(listProps).Target("#todo-list").AsCallback(),
 					}).TargetClosest(".todo-item-wrapper").SwapDelete().Confirm("Are you sure you want to delete this todo?").Indicator(".delete-btn").Attrs()... }
 				>
 					&times;

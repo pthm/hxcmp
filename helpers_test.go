@@ -176,3 +176,55 @@ func TestRenderHelper(t *testing.T) {
 	// and just verify the function signature exists
 	t.Skip("Render() requires a templ.Component which needs the templ package")
 }
+
+func TestBuildTriggerHeader(t *testing.T) {
+	tests := []struct {
+		name        string
+		callback    *Callback
+		trigger     string
+		triggerData map[string]any
+		expect      string
+	}{
+		{
+			name:   "empty",
+			expect: "",
+		},
+		{
+			name:    "simple trigger",
+			trigger: "item-updated",
+			expect:  "item-updated",
+		},
+		{
+			name:        "trigger with data",
+			trigger:     "filter:changed",
+			triggerData: map[string]any{"status": "pending"},
+			expect:      `{"filter:changed":{"status":"pending"}}`,
+		},
+		{
+			name:        "trigger with multiple data values",
+			trigger:     "item:saved",
+			triggerData: map[string]any{"id": "123", "name": "test"},
+			expect:      `{"item:saved":{"id":"123","name":"test"}}`,
+		},
+		{
+			name:     "deprecated callback only",
+			callback: &Callback{URL: "/refresh", Target: "#list", Swap: "outerHTML"},
+			expect:   `{"hxcmp:callback":{"swap":"outerHTML","target":"#list","url":"/refresh"}}`,
+		},
+		{
+			name:     "callback with trigger",
+			callback: &Callback{URL: "/refresh"},
+			trigger:  "item-updated",
+			expect:   `{"hxcmp:callback":{"url":"/refresh"},"item-updated":true}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := BuildTriggerHeader(tt.callback, tt.trigger, tt.triggerData)
+			if result != tt.expect {
+				t.Errorf("BuildTriggerHeader() = %q, want %q", result, tt.expect)
+			}
+		})
+	}
+}
