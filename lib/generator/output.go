@@ -274,6 +274,10 @@ func (c *{{.Component.TypeName}}) handleResult(w http.ResponseWriter, r *http.Re
 	}
 	if redirect := result.GetRedirect(); redirect != "" {
 		w.Header().Set("HX-Redirect", redirect)
+		// Still render flashes on redirect
+		if flashes := result.GetFlashes(); len(flashes) > 0 {
+			w.Write([]byte(hxcmp.RenderFlashesOOB(flashes)))
+		}
 		return
 	}
 	// Handle triggers
@@ -291,9 +295,13 @@ func (c *{{.Component.TypeName}}) handleResult(w http.ResponseWriter, r *http.Re
 		return
 	}
 	// Auto-render with updated props
-	tmpl := c.Render(r.Context(), result.GetProps())
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	tmpl := c.Render(r.Context(), result.GetProps())
 	tmpl.Render(r.Context(), w)
+	// Append flash OOB swap
+	if flashes := result.GetFlashes(); len(flashes) > 0 {
+		w.Write([]byte(hxcmp.RenderFlashesOOB(flashes)))
+	}
 }
 
 {{range .Component.Actions}}

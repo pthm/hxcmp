@@ -12,17 +12,6 @@ import (
 	"github.com/a-h/templ"
 )
 
-// Hydrater is implemented by components to reconstruct rich objects from serialized IDs.
-// Called automatically before Render or any action handler.
-type Hydrater[P any] interface {
-	Hydrate(ctx context.Context, props *P) error
-}
-
-// Renderer is implemented by components to produce templ output.
-type Renderer[P any] interface {
-	Render(ctx context.Context, props P) templ.Component
-}
-
 // actionDef holds metadata about a registered action.
 type actionDef struct {
 	name    string

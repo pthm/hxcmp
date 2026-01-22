@@ -28,6 +28,12 @@ func CurrentURL(r *http.Request) string {
 	return r.Header.Get("HX-Current-URL")
 }
 
+// TriggerURL returns the URL that triggered this request (if HTMX).
+// This is an alias for CurrentURL.
+func TriggerURL(r *http.Request) string {
+	return r.Header.Get("HX-Current-URL")
+}
+
 // TriggerName returns the name of the element that triggered the request.
 // Returns empty string if not present.
 func TriggerName(r *http.Request) string {

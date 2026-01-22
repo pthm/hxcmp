@@ -7,13 +7,6 @@ import (
 	"sync"
 )
 
-// HXComponent is the interface that generated code implements.
-// It provides the HTTP handler for a component.
-type HXComponent interface {
-	HXPrefix() string
-	HXServeHTTP(w http.ResponseWriter, r *http.Request)
-}
-
 // Registry manages component registration and routing.
 type Registry struct {
 	mu         sync.RWMutex

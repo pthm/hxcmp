@@ -1,19 +1,5 @@
 package hxcmp
 
-// Flash levels for toast notifications.
-const (
-	FlashSuccess = "success"
-	FlashError   = "error"
-	FlashWarning = "warning"
-	FlashInfo    = "info"
-)
-
-// Flash represents a one-time notification.
-type Flash struct {
-	Level   string // success, error, warning, info
-	Message string
-}
-
 // Result[P] is returned from action handlers.
 // It provides a fluent builder for specifying flash messages, redirects, callbacks, etc.
 type Result[P any] struct {
