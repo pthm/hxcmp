@@ -21,8 +21,9 @@ func main() {
 	// Create registry with encryption key (in production, use a real secret)
 	key := []byte("example-key-must-be-32-bytes!!")
 	reg := hxcmp.NewRegistry(key)
+	hxcmp.SetDefault(reg)
 
-	// Initialize all components (makes them available as components.TodoList, etc.)
+	// Initialize all components
 	components.Init(store, reg)
 
 	// Create router

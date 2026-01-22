@@ -37,7 +37,7 @@ templ Layout() {
 							})
 						</div>
 						<div class="todo-list-section">
-							@components.TodoListCmp().Render(ctx, components.TodoListProps{})
+							@components.TodoListCmp().RenderHydrated(ctx, components.TodoListProps{})
 						</div>
 						<div class="stats-section">
 							@components.StatsCmp().Lazy(components.StatsProps{}, statsPlaceholder())
@@ -71,7 +71,7 @@ templ TaskDetailLayout(todoID string) {
 					</p>
 				</header>
 				<main class="main detail-page">
-					@components.TaskDetailCmp().Render(ctx, components.TaskDetailProps{TodoID: todoID})
+					@components.TaskDetailCmp().RenderHydrated(ctx, components.TaskDetailProps{TodoID: todoID})
 				</main>
 			</div>
 			@hxcmp.ToastContainer()

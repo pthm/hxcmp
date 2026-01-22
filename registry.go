@@ -8,6 +8,73 @@ import (
 	"sync"
 )
 
+// defaultRegistry is the global registry used by MustGet.
+// Set via SetDefault during application initialization.
+var defaultRegistry *Registry
+
+// SetDefault sets the default registry for type-based component lookup.
+// Call this once during application startup after creating your registry.
+//
+// Example:
+//
+//	reg := hxcmp.NewRegistry(key)
+//	hxcmp.SetDefault(reg)
+//	reg.Add(NewSidebar(store), NewTodoList(store))
+func SetDefault(reg *Registry) {
+	defaultRegistry = reg
+}
+
+// MustGet retrieves a component by type from the default registry.
+// Panics if the component is not registered or SetDefault was not called.
+//
+// This is typically used by generated Cmp() getter functions:
+//
+//	func SidebarCmp() *Sidebar { return hxcmp.MustGet[*Sidebar]() }
+//
+// For manual usage in application code:
+//
+//	sidebar := hxcmp.MustGet[*Sidebar]()
+//	sidebar.Render(ctx, props)
+func MustGet[T any]() T {
+	if defaultRegistry == nil {
+		var zero T
+		panic(fmt.Sprintf("hxcmp: no default registry set (call hxcmp.SetDefault first), looking for %T", zero))
+	}
+	return Get[T](defaultRegistry)
+}
+
+// Get retrieves a component by type from the given registry.
+// Panics if the component is not registered.
+//
+// Example:
+//
+//	sidebar := hxcmp.Get[*Sidebar](reg)
+func Get[T any](reg *Registry) T {
+	reg.mu.RLock()
+	defer reg.mu.RUnlock()
+
+	for _, comp := range reg.components {
+		if c, ok := comp.(T); ok {
+			return c
+		}
+	}
+
+	var zero T
+	panic(fmt.Sprintf("hxcmp: component %T not registered", zero))
+}
+
+// Provide registers a component and returns it for optional chaining.
+// This is a convenience wrapper around reg.Add that returns the component.
+//
+// Example:
+//
+//	sidebar := hxcmp.Provide(reg, NewSidebar(store))
+//	// sidebar is now registered and can be used immediately
+func Provide[T any](reg *Registry, comp T) T {
+	reg.Add(comp)
+	return comp
+}
+
 // Registry manages component registration and routing.
 //
 // The registry provides centralized component management with:
