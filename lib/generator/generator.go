@@ -192,11 +192,24 @@ type PropField struct {
 	Exclude   bool // hx:"-"
 }
 
+// HandlerSignature represents the detected handler signature type.
+type HandlerSignature int
+
+const (
+	// HandlerSigCtxProps: func(ctx, P) Result[P]
+	HandlerSigCtxProps HandlerSignature = iota
+	// HandlerSigCtxPropsRequest: func(ctx, P, *http.Request) Result[P]
+	HandlerSigCtxPropsRequest
+	// HandlerSigCtxPropsWriter: func(ctx, P, http.ResponseWriter) Result[P]
+	HandlerSigCtxPropsWriter
+)
+
 // ActionInfo represents a registered action.
 type ActionInfo struct {
-	Name    string // Action name (e.g., "edit")
-	Method  string // HTTP method (defaults to POST)
-	Handler string // Handler method name
+	Name      string           // Action name (e.g., "edit")
+	Method    string           // HTTP method (defaults to POST)
+	Handler   string           // Handler method name
+	Signature HandlerSignature // Detected handler signature
 }
 
 // findComponents finds all component types in a package.
@@ -361,6 +374,9 @@ func (g *Generator) findActions(file *ast.File, typeName string) []ActionInfo {
 	// Keep the version with a custom method over the default POST.
 	actionMap := make(map[string]ActionInfo)
 
+	// Build a map of handler method signatures for later lookup
+	handlerSigs := g.findHandlerSignatures(file, typeName)
+
 	// Look for function declarations
 	for _, decl := range file.Decls {
 		funcDecl, ok := decl.(*ast.FuncDecl)
@@ -373,6 +389,10 @@ func (g *Generator) findActions(file *ast.File, typeName string) []ActionInfo {
 			if callExpr, ok := n.(*ast.CallExpr); ok {
 				action := g.extractActionFromCall(callExpr)
 				if action != nil {
+					// Look up the handler signature
+					if sig, ok := handlerSigs[action.Handler]; ok {
+						action.Signature = sig
+					}
 					// Keep the version with custom method over default POST
 					existing, exists := actionMap[action.Name]
 					if !exists || (existing.Method == "POST" && action.Method != "POST") {
@@ -391,6 +411,73 @@ func (g *Generator) findActions(file *ast.File, typeName string) []ActionInfo {
 	}
 
 	return actions
+}
+
+// findHandlerSignatures finds all method signatures for a component type.
+// Returns a map of method name to signature type.
+func (g *Generator) findHandlerSignatures(file *ast.File, typeName string) map[string]HandlerSignature {
+	sigs := make(map[string]HandlerSignature)
+
+	for _, decl := range file.Decls {
+		funcDecl, ok := decl.(*ast.FuncDecl)
+		if !ok || funcDecl.Recv == nil {
+			continue
+		}
+
+		// Check if this is a method on the component type
+		if len(funcDecl.Recv.List) == 0 {
+			continue
+		}
+		recv := funcDecl.Recv.List[0]
+		recvType := g.typeToString(recv.Type)
+		if !strings.HasPrefix(recvType, "*"+typeName) && recvType != "*"+typeName {
+			continue
+		}
+
+		// Detect signature based on parameter count and types
+		if funcDecl.Type.Params == nil {
+			continue
+		}
+		params := funcDecl.Type.Params.List
+		sig := g.detectHandlerSignature(params)
+		sigs[funcDecl.Name.Name] = sig
+	}
+
+	return sigs
+}
+
+// detectHandlerSignature determines the signature type from function parameters.
+func (g *Generator) detectHandlerSignature(params []*ast.Field) HandlerSignature {
+	// Count actual parameters (each field can have multiple names)
+	paramCount := 0
+	for _, p := range params {
+		if len(p.Names) == 0 {
+			paramCount++ // Anonymous param
+		} else {
+			paramCount += len(p.Names)
+		}
+	}
+
+	// (ctx, props) = 2 params
+	if paramCount == 2 {
+		return HandlerSigCtxProps
+	}
+
+	// (ctx, props, request/writer) = 3 params
+	if paramCount >= 3 && len(params) >= 3 {
+		// Check the third parameter type
+		thirdParam := params[2]
+		thirdType := g.typeToString(thirdParam.Type)
+		if thirdType == "*http.Request" {
+			return HandlerSigCtxPropsRequest
+		}
+		if thirdType == "http.ResponseWriter" {
+			return HandlerSigCtxPropsWriter
+		}
+	}
+
+	// Default to ctx, props, request for backwards compatibility
+	return HandlerSigCtxPropsRequest
 }
 
 // extractActionFromCall extracts action info from a call expression.

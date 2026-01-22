@@ -1,6 +1,13 @@
 package hxcmp
 
-import "errors"
+import (
+	"context"
+	"errors"
+	"html"
+	"io"
+
+	"github.com/a-h/templ"
+)
 
 // Sentinel errors for component operations.
 var (
@@ -47,4 +54,17 @@ func IsNotFound(err error) bool {
 //	}
 func IsDecryptionError(err error) bool {
 	return errors.Is(err, ErrDecryptFailed) || errors.Is(err, ErrSignatureInvalid)
+}
+
+// ErrorComponent returns a templ.Component that renders an error message.
+//
+// This is used by generated RenderHydrated code to display hydration errors
+// visually rather than failing silently. The error is rendered as an HTML
+// div with a class for styling.
+func ErrorComponent(err error) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		msg := html.EscapeString(err.Error())
+		_, writeErr := w.Write([]byte(`<div class="hxcmp-error" style="color: red; padding: 1rem; border: 1px solid red; margin: 0.5rem 0;">Hydration error: ` + msg + `</div>`))
+		return writeErr
+	})
 }

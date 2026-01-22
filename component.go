@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net/http"
 	"path/filepath"
 	"runtime"
 
@@ -18,6 +19,10 @@ type actionDef struct {
 	method  string
 	handler any
 }
+
+// ErrorHandler is the function signature for centralized error handling.
+// Used by generated code to delegate error handling to the registry's OnError.
+type ErrorHandler func(http.ResponseWriter, *http.Request, error)
 
 // Component[P] is the base type embedded by user components.
 // P is the Props type for this component.
@@ -51,7 +56,8 @@ type Component[P any] struct {
 	sensitive bool
 	actions   map[string]*actionDef
 	encoder   *Encoder
-	parent    any // The concrete component that embeds this
+	parent    any          // The concrete component that embeds this
+	onError   ErrorHandler // Centralized error handler from registry
 }
 
 // New creates a new component with the given name.
@@ -146,6 +152,18 @@ func (c *Component[P]) Encoder() *Encoder {
 // Called by generated code to enable method dispatch.
 func (c *Component[P]) SetParent(parent any) {
 	c.parent = parent
+}
+
+// SetOnError sets the centralized error handler.
+// Called by the registry during component registration.
+func (c *Component[P]) SetOnError(handler ErrorHandler) {
+	c.onError = handler
+}
+
+// OnError returns the centralized error handler.
+// Generated code uses this to delegate error handling to the registry.
+func (c *Component[P]) OnError() ErrorHandler {
+	return c.onError
 }
 
 // Refresh returns an action builder for the default render (GET).

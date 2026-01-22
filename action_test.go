@@ -235,6 +235,29 @@ func TestActionAsLink(t *testing.T) {
 	}
 }
 
+func TestActionAsLink_WithEncodedProps(t *testing.T) {
+	// Create action with encoded props using NewActionWithProps
+	a := NewActionWithProps("/view/item", http.MethodGet, "encoded123")
+	attrs := a.AsLink()
+
+	// AsLink should include encoded props in the URL
+	expectedHref := "/view/item?p=encoded123"
+	if attrs["href"] != expectedHref {
+		t.Errorf("href = %q, want %q", attrs["href"], expectedHref)
+	}
+}
+
+func TestActionAsLink_WithoutEncodedProps(t *testing.T) {
+	// Action without encoded props
+	a := NewActionWithProps("/view/item", http.MethodGet, "")
+	attrs := a.AsLink()
+
+	// Should just have the base URL
+	if attrs["href"] != "/view/item" {
+		t.Errorf("href = %q, want %q", attrs["href"], "/view/item")
+	}
+}
+
 func TestActionAsCallback(t *testing.T) {
 	a := NewAction("/refresh", http.MethodGet).
 		Target("#list").
@@ -250,6 +273,40 @@ func TestActionAsCallback(t *testing.T) {
 	}
 	if cb.Swap != "innerHTML" {
 		t.Errorf("Swap = %q, want %q", cb.Swap, "innerHTML")
+	}
+}
+
+func TestActionAsCallback_WithEncodedProps(t *testing.T) {
+	// Create action with encoded props using NewActionWithProps
+	a := NewActionWithProps("/refresh", http.MethodPost, "props123").
+		Target("#list").
+		Swap(SwapInner)
+
+	cb := a.AsCallback()
+
+	// AsCallback should include encoded props in the URL
+	expectedURL := "/refresh?p=props123"
+	if cb.URL != expectedURL {
+		t.Errorf("URL = %q, want %q", cb.URL, expectedURL)
+	}
+	if cb.Target != "#list" {
+		t.Errorf("Target = %q, want %q", cb.Target, "#list")
+	}
+	if cb.Swap != "innerHTML" {
+		t.Errorf("Swap = %q, want %q", cb.Swap, "innerHTML")
+	}
+}
+
+func TestActionAsCallback_WithoutEncodedProps(t *testing.T) {
+	// Action without encoded props
+	a := NewActionWithProps("/refresh", http.MethodPost, "").
+		Target("#list")
+
+	cb := a.AsCallback()
+
+	// Should just have the base URL
+	if cb.URL != "/refresh" {
+		t.Errorf("URL = %q, want %q", cb.URL, "/refresh")
 	}
 }
 

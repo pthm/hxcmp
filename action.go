@@ -444,7 +444,7 @@ func (a *Action) Attrs() templ.Attributes {
 //	<a {...c.ViewRaw(props).AsLink()}>View Raw</a>
 func (a *Action) AsLink() templ.Attributes {
 	return templ.Attributes{
-		"href": a.url,
+		"href": a.URL(),
 	}
 }
 
@@ -472,7 +472,7 @@ func (a *Action) URL() string {
 //	c.RefreshList(props).OnEvent("item:saved").Attrs()
 func (a *Action) AsCallback() Callback {
 	return Callback{
-		URL:    a.url,
+		URL:    a.URL(),
 		Target: a.target,
 		Swap:   string(a.swap),
 	}

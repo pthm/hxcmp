@@ -1,7 +1,9 @@
 package hxcmp
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"reflect"
 	"strings"
@@ -210,8 +212,9 @@ func (reg *Registry) registerComponent(comp any) {
 	reg.registerComponentReflection(comp)
 }
 
-// setEncoderOnComponent sets the encoder on a component's embedded Component field.
-// This is necessary because generated code accesses the encoder via c.Component.Encoder().
+// setEncoderOnComponent sets the encoder and error handler on a component's embedded Component field.
+// This is necessary because generated code accesses the encoder via c.Component.Encoder()
+// and the error handler via c.Component.OnError().
 func (reg *Registry) setEncoderOnComponent(comp any) {
 	val := reflect.ValueOf(comp)
 	if val.Kind() != reflect.Ptr {
@@ -232,6 +235,12 @@ func (reg *Registry) setEncoderOnComponent(comp any) {
 	setEncoderMethod := compField.MethodByName("SetEncoder")
 	if setEncoderMethod.IsValid() {
 		setEncoderMethod.Call([]reflect.Value{reflect.ValueOf(reg.encoder)})
+	}
+
+	// Call SetOnError on the embedded Component to enable centralized error handling
+	setOnErrorMethod := compField.MethodByName("SetOnError")
+	if setOnErrorMethod.IsValid() {
+		setOnErrorMethod.Call([]reflect.Value{reflect.ValueOf(reg.OnError)})
 	}
 }
 
@@ -306,13 +315,260 @@ func (reg *Registry) findEmbeddedComponent(val reflect.Value) (reflect.Value, bo
 
 // handleRequest handles a component request using reflection.
 //
-// This is the fallback path when generated code is not available. In practice,
-// generated code handles all of this more efficiently without reflection.
+// This is the fallback path when generated code is not available. It provides
+// basic functionality for prototyping without running the code generator.
+// In production, generated code handles all of this more efficiently.
 func (reg *Registry) handleRequest(comp any, compField reflect.Value, w http.ResponseWriter, r *http.Request) {
-	// This is a simplified implementation.
-	// The full implementation would decode props, call Hydrate, route to handlers, etc.
-	// In practice, generated code handles all of this more efficiently.
-	http.Error(w, "Component requires generated code", http.StatusInternalServerError)
+	// Get the prefix to determine the action path
+	prefix := compField.MethodByName("Prefix").Call(nil)[0].String()
+	path := strings.TrimPrefix(r.URL.Path, prefix)
+	path = strings.TrimPrefix(path, "/")
+
+	// Decode props if present
+	encoded := r.URL.Query().Get("p")
+	if encoded == "" && r.Method != http.MethodGet {
+		if err := r.ParseForm(); err == nil {
+			encoded = r.FormValue("p")
+		}
+	}
+
+	// Create a new props value via reflection
+	propsType := reg.getPropsType(compField)
+	if propsType == nil {
+		reg.OnError(w, r, fmt.Errorf("cannot determine props type"))
+		return
+	}
+	propsPtr := reflect.New(propsType)
+
+	// Decode props if encoded string present
+	if encoded != "" {
+		// Get the decoder method if it exists
+		if decoder, ok := propsPtr.Interface().(Decodable); ok {
+			if err := reg.encoder.Decode(encoded, reg.isSensitive(compField), decoder); err != nil {
+				reg.OnError(w, r, err)
+				return
+			}
+		}
+	}
+
+	// Call Hydrate
+	hydrateMethod := reflect.ValueOf(comp).MethodByName("Hydrate")
+	if hydrateMethod.IsValid() {
+		results := hydrateMethod.Call([]reflect.Value{
+			reflect.ValueOf(r.Context()),
+			propsPtr,
+		})
+		if len(results) > 0 && !results[0].IsNil() {
+			reg.OnError(w, r, results[0].Interface().(error))
+			return
+		}
+	}
+
+	props := propsPtr.Elem()
+
+	// Route based on method and path
+	if r.Method == http.MethodGet && (path == "" || path == "/") {
+		// GET / - render
+		reg.reflectRender(comp, props, w, r)
+		return
+	}
+
+	// Try to find and invoke an action handler
+	actions := compField.MethodByName("Actions").Call(nil)[0]
+	if actions.Kind() == reflect.Map {
+		for _, key := range actions.MapKeys() {
+			actionName := key.String()
+			if path == actionName {
+				actionDef := actions.MapIndex(key)
+				if !actionDef.IsValid() {
+					continue
+				}
+
+				// Check if method matches
+				methodField := actionDef.Elem().FieldByName("method")
+				if methodField.IsValid() {
+					expectedMethod := methodField.String()
+					if expectedMethod == "" {
+						expectedMethod = "POST"
+					}
+					if r.Method != expectedMethod {
+						continue
+					}
+				}
+
+				// Get the handler
+				handlerField := actionDef.Elem().FieldByName("handler")
+				if !handlerField.IsValid() {
+					continue
+				}
+
+				// Invoke the handler via reflection
+				reg.reflectInvokeHandler(comp, handlerField.Interface(), props, w, r)
+				return
+			}
+		}
+	}
+
+	http.NotFound(w, r)
+}
+
+// getPropsType extracts the props type from a Component[P] field.
+func (reg *Registry) getPropsType(compField reflect.Value) reflect.Type {
+	// The Component[P] has a method that uses P - we can extract it from Refresh's signature
+	refreshMethod := compField.MethodByName("Refresh")
+	if !refreshMethod.IsValid() {
+		return nil
+	}
+	// Refresh takes (props P) and returns *Action
+	// The first (and only) input parameter is the props type
+	methodType := refreshMethod.Type()
+	if methodType.NumIn() > 0 {
+		return methodType.In(0)
+	}
+	return nil
+}
+
+// isSensitive checks if a component is marked as sensitive.
+func (reg *Registry) isSensitive(compField reflect.Value) bool {
+	method := compField.MethodByName("IsSensitive")
+	if !method.IsValid() {
+		return false
+	}
+	results := method.Call(nil)
+	if len(results) > 0 {
+		return results[0].Bool()
+	}
+	return false
+}
+
+// reflectRender renders a component via reflection.
+func (reg *Registry) reflectRender(comp any, props reflect.Value, w http.ResponseWriter, r *http.Request) {
+	renderMethod := reflect.ValueOf(comp).MethodByName("Render")
+	if !renderMethod.IsValid() {
+		reg.OnError(w, r, fmt.Errorf("component does not implement Render"))
+		return
+	}
+
+	results := renderMethod.Call([]reflect.Value{
+		reflect.ValueOf(r.Context()),
+		props,
+	})
+
+	if len(results) == 0 {
+		reg.OnError(w, r, fmt.Errorf("Render returned no value"))
+		return
+	}
+
+	// The result should be a templ.Component
+	templComp, ok := results[0].Interface().(interface {
+		Render(context.Context, io.Writer) error
+	})
+	if !ok {
+		reg.OnError(w, r, fmt.Errorf("Render did not return a templ.Component"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := templComp.Render(r.Context(), w); err != nil {
+		// Already started writing, just log
+		fmt.Printf("hxcmp: render error: %v\n", err)
+	}
+}
+
+// reflectInvokeHandler invokes an action handler via reflection.
+func (reg *Registry) reflectInvokeHandler(comp any, handler any, props reflect.Value, w http.ResponseWriter, r *http.Request) {
+	handlerVal := reflect.ValueOf(handler)
+	if !handlerVal.IsValid() || handlerVal.Kind() != reflect.Func {
+		reg.OnError(w, r, fmt.Errorf("invalid handler"))
+		return
+	}
+
+	// Determine handler signature and call appropriately
+	handlerType := handlerVal.Type()
+	numIn := handlerType.NumIn()
+
+	var results []reflect.Value
+	switch numIn {
+	case 2:
+		// func(ctx, props) Result[P]
+		results = handlerVal.Call([]reflect.Value{
+			reflect.ValueOf(r.Context()),
+			props,
+		})
+	case 3:
+		// func(ctx, props, request) or func(ctx, props, writer)
+		thirdArgType := handlerType.In(2)
+		if thirdArgType.Kind() == reflect.Ptr && thirdArgType.Elem().Name() == "Request" {
+			results = handlerVal.Call([]reflect.Value{
+				reflect.ValueOf(r.Context()),
+				props,
+				reflect.ValueOf(r),
+			})
+		} else {
+			results = handlerVal.Call([]reflect.Value{
+				reflect.ValueOf(r.Context()),
+				props,
+				reflect.ValueOf(w),
+			})
+		}
+	default:
+		reg.OnError(w, r, fmt.Errorf("unsupported handler signature"))
+		return
+	}
+
+	if len(results) == 0 {
+		return
+	}
+
+	// Process the Result[P]
+	result := results[0]
+	reg.processReflectResult(comp, result, props, w, r)
+}
+
+// processReflectResult handles a Result[P] value via reflection.
+func (reg *Registry) processReflectResult(comp any, result reflect.Value, props reflect.Value, w http.ResponseWriter, r *http.Request) {
+	// Check for error
+	getErrMethod := result.MethodByName("GetErr")
+	if getErrMethod.IsValid() {
+		errResult := getErrMethod.Call(nil)
+		if len(errResult) > 0 && !errResult[0].IsNil() {
+			reg.OnError(w, r, errResult[0].Interface().(error))
+			return
+		}
+	}
+
+	// Check for redirect
+	getRedirectMethod := result.MethodByName("GetRedirect")
+	if getRedirectMethod.IsValid() {
+		redirectResult := getRedirectMethod.Call(nil)
+		if len(redirectResult) > 0 {
+			redirect := redirectResult[0].String()
+			if redirect != "" {
+				w.Header().Set("HX-Redirect", redirect)
+				return
+			}
+		}
+	}
+
+	// Check for skip
+	shouldSkipMethod := result.MethodByName("ShouldSkip")
+	if shouldSkipMethod.IsValid() {
+		skipResult := shouldSkipMethod.Call(nil)
+		if len(skipResult) > 0 && skipResult[0].Bool() {
+			return
+		}
+	}
+
+	// Get updated props and render
+	getPropsMethod := result.MethodByName("GetProps")
+	if getPropsMethod.IsValid() {
+		propsResult := getPropsMethod.Call(nil)
+		if len(propsResult) > 0 {
+			props = propsResult[0]
+		}
+	}
+
+	reg.reflectRender(comp, props, w, r)
 }
 
 // Handler returns the HTTP handler for component routes.

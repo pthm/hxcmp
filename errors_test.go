@@ -1,6 +1,8 @@
 package hxcmp
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -88,5 +90,57 @@ func TestErrorMessages(t *testing.T) {
 		if err.Error()[:6] != "hxcmp:" {
 			t.Errorf("Error %q should start with 'hxcmp:'", err.Error())
 		}
+	}
+}
+
+func TestErrorComponent(t *testing.T) {
+	testErr := errors.New("test hydration error")
+	comp := ErrorComponent(testErr)
+
+	var buf bytes.Buffer
+	err := comp.Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("ErrorComponent.Render() error = %v", err)
+	}
+
+	html := buf.String()
+
+	// Should contain the error class for styling
+	if !bytes.Contains([]byte(html), []byte(`class="hxcmp-error"`)) {
+		t.Errorf("ErrorComponent output should contain hxcmp-error class: %s", html)
+	}
+
+	// Should contain the error message
+	if !bytes.Contains([]byte(html), []byte("test hydration error")) {
+		t.Errorf("ErrorComponent output should contain error message: %s", html)
+	}
+
+	// Should contain "Hydration error:" prefix
+	if !bytes.Contains([]byte(html), []byte("Hydration error:")) {
+		t.Errorf("ErrorComponent output should contain 'Hydration error:' prefix: %s", html)
+	}
+}
+
+func TestErrorComponent_HTMLEscaping(t *testing.T) {
+	// Test that error messages are HTML-escaped to prevent XSS
+	maliciousErr := errors.New(`<script>alert("xss")</script>`)
+	comp := ErrorComponent(maliciousErr)
+
+	var buf bytes.Buffer
+	err := comp.Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("ErrorComponent.Render() error = %v", err)
+	}
+
+	html := buf.String()
+
+	// Should NOT contain unescaped script tag
+	if bytes.Contains([]byte(html), []byte("<script>")) {
+		t.Errorf("ErrorComponent should escape HTML: %s", html)
+	}
+
+	// Should contain escaped version
+	if !bytes.Contains([]byte(html), []byte("&lt;script&gt;")) {
+		t.Errorf("ErrorComponent should contain HTML-escaped message: %s", html)
 	}
 }

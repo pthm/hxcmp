@@ -291,8 +291,11 @@ func (c *{{.Component.TypeName}}) HXPrefix() string {
 
 // RenderHydrated calls Hydrate then Render for initial page loads.
 // Use this in templates instead of Render when not going through HXServeHTTP.
+// If Hydrate returns an error, it returns an error component displaying the error.
 func (c *{{.Component.TypeName}}) RenderHydrated(ctx context.Context, props {{.Component.PropsType}}) templ.Component {
-	c.Hydrate(ctx, &props)
+	if err := c.Hydrate(ctx, &props); err != nil {
+		return hxcmp.ErrorComponent(err)
+	}
 	return c.Render(ctx, props)
 }
 
@@ -309,14 +312,14 @@ func (c *{{.Component.TypeName}}) HXServeHTTP(w http.ResponseWriter, r *http.Req
 	var props {{.Component.PropsType}}
 	if encoded != "" {
 		if err := c.Component.Encoder().Decode(encoded, c.IsSensitive(), &props); err != nil {
-			http.Error(w, "Invalid parameters", http.StatusBadRequest)
+			c.handleError(w, r, err)
 			return
 		}
 	}
 
 	// Run lifecycle: Hydrate
 	if err := c.Hydrate(r.Context(), &props); err != nil {
-		http.Error(w, "Hydration failed", http.StatusInternalServerError)
+		c.handleError(w, r, err)
 		return
 	}
 
@@ -334,6 +337,25 @@ func (c *{{.Component.TypeName}}) HXServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 }
 
+// handleError delegates error handling to the centralized OnError handler.
+// Falls back to default behavior if no handler is set.
+func (c *{{.Component.TypeName}}) handleError(w http.ResponseWriter, r *http.Request, err error) {
+	if handler := c.Component.OnError(); handler != nil {
+		handler(w, r, err)
+		return
+	}
+	// Fallback: use default error handling based on error type
+	if hxcmp.IsNotFound(err) {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	if hxcmp.IsDecryptionError(err) {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	http.Error(w, "Internal error", http.StatusInternalServerError)
+}
+
 func (c *{{.Component.TypeName}}) serveRender(w http.ResponseWriter, r *http.Request, props {{.Component.PropsType}}) {
 	tmpl := c.Render(r.Context(), props)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -342,24 +364,32 @@ func (c *{{.Component.TypeName}}) serveRender(w http.ResponseWriter, r *http.Req
 
 {{range .Component.Actions}}
 func (c *{{$.Component.TypeName}}) serve{{camelToTitle .Handler}}(w http.ResponseWriter, r *http.Request, props {{$.Component.PropsType}}) {
+	{{- if eq .Signature 0}}
+	result := c.{{.Handler}}(r.Context(), props)
+	{{- else if eq .Signature 2}}
+	result := c.{{.Handler}}(r.Context(), props, w)
+	{{- else}}
 	result := c.{{.Handler}}(r.Context(), props, r)
+	{{- end}}
 	c.handleResult(w, r, result)
 }
 {{end}}
 
 func (c *{{.Component.TypeName}}) handleResult(w http.ResponseWriter, r *http.Request, result hxcmp.Result[{{.Component.PropsType}}]) {
 	if err := result.GetErr(); err != nil {
-		http.Error(w, "Error", http.StatusInternalServerError)
+		c.handleError(w, r, err)
 		return
 	}
-	if status := result.GetStatus(); status != 0 {
-		w.WriteHeader(status)
-	}
+
+	// Set all headers BEFORE WriteHeader to ensure they are sent
 	for k, v := range result.GetHeaders() {
 		w.Header().Set(k, v)
 	}
 	if redirect := result.GetRedirect(); redirect != "" {
 		w.Header().Set("HX-Redirect", redirect)
+		if status := result.GetStatus(); status != 0 {
+			w.WriteHeader(status)
+		}
 		// Still render flashes on redirect
 		if flashes := result.GetFlashes(); len(flashes) > 0 {
 			w.Write([]byte(hxcmp.RenderFlashesOOB(flashes)))
@@ -375,10 +405,16 @@ func (c *{{.Component.TypeName}}) handleResult(w http.ResponseWriter, r *http.Re
 		w.Header().Set("HX-Trigger-After-Settle", afterSettle)
 	}
 	if result.ShouldSkip() {
+		if status := result.GetStatus(); status != 0 {
+			w.WriteHeader(status)
+		}
 		return
 	}
 	// Auto-render with updated props
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if status := result.GetStatus(); status != 0 {
+		w.WriteHeader(status)
+	}
 	tmpl := c.Render(r.Context(), result.GetProps())
 	tmpl.Render(r.Context(), w)
 	// Append flash OOB swap
