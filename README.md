@@ -1,3 +1,5 @@
+<img width="434" height="83" alt="hxcmp" src="https://github.com/user-attachments/assets/11a72728-2030-4977-ac59-c2976b9f13f4" />
+
 # hxcmp
 
 A component system for Go that brings React-like composition to server-rendered applications using [Templ](https://templ.guide) templates and [HTMX](https://htmx.org). Components are strongly typed via generics with compile-time verified actions and zero reflection in the request path.
