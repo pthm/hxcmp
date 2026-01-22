@@ -4,8 +4,9 @@ import "fmt"
 
 templ statsTemplate(c *Stats, props StatsProps) {
 	<div
+		id="stats"
 		class="stats"
-		{ c.RefreshAction(props).SwapOuter().Attrs()... }
+		{ c.RefreshAction(props).Target("#stats").SwapOuter().Attrs()... }
 	>
 		<h3>Statistics</h3>
 		<div class="stats-grid">

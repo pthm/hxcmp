@@ -5,7 +5,7 @@ templ todoListTemplate(props TodoListProps) {
 	<div
 		id="todo-list"
 		class="todo-list"
-		{ TodoListCmp().Refresh(props).OnEvent("todo:added").OnEvent("todo:changed").OnEvent("filter:changed").Attrs()... }
+		{ TodoListCmp().Refresh(props).Target("#todo-list").OnEvent("todo:added").OnEvent("todo:changed").OnEvent("filter:changed").Attrs()... }
 	>
 		if len(props.Todos) == 0 {
 			<div class="empty-state">
