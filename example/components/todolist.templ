@@ -25,9 +25,9 @@ templ todoItemInList(listProps TodoListProps, todo *Todo) {
 			<div class="todo-checkbox">
 				<button
 					class="toggle-btn"
-					{ C.TodoItem.Toggle(TodoItemProps{
+					{ TodoItemCmp().Toggle(TodoItemProps{
 						TodoID: todo.ID,
-						OnChange: C.TodoList.Refresh(listProps).Target("#todo-list").AsCallback(),
+						OnChange: TodoListCmp().Refresh(listProps).Target("#todo-list").AsCallback(),
 					}).TargetClosest(".todo-item-wrapper").Indicator(".toggle-btn").Attrs()... }
 				>
 					if todo.IsCompleted() {
@@ -56,9 +56,9 @@ templ todoItemInList(listProps TodoListProps, todo *Todo) {
 			<div class="todo-actions">
 				<button
 					class="delete-btn"
-					{ C.TodoItem.Delete(TodoItemProps{
+					{ TodoItemCmp().Delete(TodoItemProps{
 						TodoID: todo.ID,
-						OnChange: C.TodoList.Refresh(listProps).Target("#todo-list").AsCallback(),
+						OnChange: TodoListCmp().Refresh(listProps).Target("#todo-list").AsCallback(),
 					}).TargetClosest(".todo-item-wrapper").SwapDelete().Confirm("Are you sure you want to delete this todo?").Indicator(".delete-btn").Attrs()... }
 				>
 					&times;

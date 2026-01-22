@@ -262,6 +262,9 @@ var _ hxcmp.HXComponent = (*{{.Component.TypeName}})(nil)
 var _ hxcmp.Encodable = (*{{.Component.PropsType}})(nil)
 var _ hxcmp.Decodable = (*{{.Component.PropsType}})(nil)
 
+// {{.Component.TypeName}}Cmp returns the registered component instance.
+func {{.Component.TypeName}}Cmp() *{{.Component.TypeName}} { return C.{{.Component.TypeName}} }
+
 // HXEncode encodes props to a map for serialization.
 func (p {{.Component.PropsType}}) HXEncode() map[string]any {
 	m := make(map[string]any)

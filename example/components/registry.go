@@ -2,8 +2,8 @@ package components
 
 import "github.com/pthm/hxcmp"
 
-// C holds all component instances for direct template access.
-// Usage: components.C.TodoList.Render(ctx, props)
+// C holds all component instances, accessed via generated getter functions.
+// Usage: components.TodoListCmp().Render(ctx, props)
 var C struct {
 	TodoList   *TodoList
 	TodoItem   *TodoItem

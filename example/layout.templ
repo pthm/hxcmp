@@ -6,7 +6,7 @@ import (
 )
 
 // Layout renders the main 2-column page layout.
-// Components accessed directly via components.C (initialized at startup).
+// Components accessed via generated getter functions (e.g., components.SidebarCmp()).
 templ Layout() {
 	<!DOCTYPE html>
 	<html lang="en">
@@ -26,21 +26,21 @@ templ Layout() {
 				</header>
 				<div class="layout">
 					<aside class="sidebar">
-						@components.C.Sidebar.Render(ctx, components.SidebarProps{
-							OnFilter: components.C.TodoList.Refresh(components.TodoListProps{}).Target("#todo-list").AsCallback(),
+						@components.SidebarCmp().Render(ctx, components.SidebarProps{
+							OnFilter: components.TodoListCmp().Refresh(components.TodoListProps{}).Target("#todo-list").AsCallback(),
 						})
 					</aside>
 					<main class="main">
 						<div class="add-section">
-							@components.C.AddTodo.Render(ctx, components.AddTodoProps{
-								OnAdd: components.C.TodoList.Refresh(components.TodoListProps{}).Target("#todo-list").AsCallback(),
+							@components.AddTodoCmp().Render(ctx, components.AddTodoProps{
+								OnAdd: components.TodoListCmp().Refresh(components.TodoListProps{}).Target("#todo-list").AsCallback(),
 							})
 						</div>
 						<div class="todo-list-section">
-							@components.C.TodoList.Render(ctx, components.TodoListProps{})
+							@components.TodoListCmp().Render(ctx, components.TodoListProps{})
 						</div>
 						<div class="stats-section">
-							@components.C.Stats.Lazy(components.StatsProps{}, statsPlaceholder())
+							@components.StatsCmp().Lazy(components.StatsProps{}, statsPlaceholder())
 						</div>
 					</main>
 				</div>
@@ -71,7 +71,7 @@ templ TaskDetailLayout(todoID string) {
 					</p>
 				</header>
 				<main class="main detail-page">
-					@components.C.TaskDetail.Render(ctx, components.TaskDetailProps{TodoID: todoID})
+					@components.TaskDetailCmp().Render(ctx, components.TaskDetailProps{TodoID: todoID})
 				</main>
 			</div>
 			@hxcmp.ToastContainer()
