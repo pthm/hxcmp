@@ -170,7 +170,7 @@ func TestTargetID(t *testing.T) {
 	}
 }
 
-func TestRender(t *testing.T) {
+func TestRenderHelper(t *testing.T) {
 	// We need a simple templ component for testing
 	// Since we can't easily create one without templ, we'll skip the full render test
 	// and just verify the function signature exists
