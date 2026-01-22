@@ -292,6 +292,10 @@ func (a *Action) OnRevealed() *Action {
 //
 // The action automatically listens for the "url:sync" event from body.
 //
+// Implementation: Sets data-sync-url attribute which the hxcmp-ext.js
+// extension reads. The extension intercepts url:sync events and injects
+// URL params into the HTMX request as hx-vals.
+//
 // Usage:
 //
 //	// TodoList refreshes when URL changes, reading "status" from URL

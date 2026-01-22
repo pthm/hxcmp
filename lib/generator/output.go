@@ -150,16 +150,21 @@ func camelToTitle(s string) string {
 	return string(unicode.ToUpper(rune(s[0]))) + s[1:]
 }
 
+// fieldKey returns the serialization key for a prop field.
+func fieldKey(f PropField) string {
+	if f.Tag != "" {
+		return f.Tag
+	}
+	return strings.ToLower(f.Name)
+}
+
 // encodeFieldCode generates the code to encode a field.
 func encodeFieldCode(f PropField) string {
 	if f.Exclude {
 		return ""
 	}
 
-	key := f.Tag
-	if key == "" {
-		key = strings.ToLower(f.Name)
-	}
+	key := fieldKey(f)
 
 	// Handle omitempty
 	if f.OmitEmpty {
@@ -199,10 +204,7 @@ func decodeFieldCode(f PropField) string {
 		return ""
 	}
 
-	key := f.Tag
-	if key == "" {
-		key = strings.ToLower(f.Name)
-	}
+	key := fieldKey(f)
 
 	switch f.Type {
 	case "string":

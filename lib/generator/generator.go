@@ -448,15 +448,7 @@ func (g *Generator) findHandlerSignatures(file *ast.File, typeName string) map[s
 
 // detectHandlerSignature determines the signature type from function parameters.
 func (g *Generator) detectHandlerSignature(params []*ast.Field) HandlerSignature {
-	// Count actual parameters (each field can have multiple names)
-	paramCount := 0
-	for _, p := range params {
-		if len(p.Names) == 0 {
-			paramCount++ // Anonymous param
-		} else {
-			paramCount += len(p.Names)
-		}
-	}
+	paramCount := countParams(params)
 
 	// (ctx, props) = 2 params
 	if paramCount == 2 {
@@ -465,19 +457,31 @@ func (g *Generator) detectHandlerSignature(params []*ast.Field) HandlerSignature
 
 	// (ctx, props, request/writer) = 3 params
 	if paramCount >= 3 && len(params) >= 3 {
-		// Check the third parameter type
-		thirdParam := params[2]
-		thirdType := g.typeToString(thirdParam.Type)
-		if thirdType == "*http.Request" {
+		thirdType := g.typeToString(params[2].Type)
+		switch thirdType {
+		case "*http.Request":
 			return HandlerSigCtxPropsRequest
-		}
-		if thirdType == "http.ResponseWriter" {
+		case "http.ResponseWriter":
 			return HandlerSigCtxPropsWriter
 		}
 	}
 
 	// Default to ctx, props, request for backwards compatibility
 	return HandlerSigCtxPropsRequest
+}
+
+// countParams counts the actual number of parameters in a field list.
+// Each field can declare multiple names (e.g., "a, b int" is one field with two names).
+func countParams(params []*ast.Field) int {
+	count := 0
+	for _, p := range params {
+		if len(p.Names) == 0 {
+			count++ // Anonymous param
+		} else {
+			count += len(p.Names)
+		}
+	}
+	return count
 }
 
 // extractActionFromCall extracts action info from a call expression.

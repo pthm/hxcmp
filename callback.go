@@ -42,22 +42,23 @@ func (cb Callback) IsZero() bool {
 //
 // Deprecated: Callbacks are deprecated. Use Trigger with data instead.
 func (cb Callback) TriggerJSON() string {
-	payload := map[string]any{
-		"hxcmp:callback": map[string]any{
-			"url": cb.URL,
-		},
-	}
+	data, _ := json.Marshal(map[string]any{"hxcmp:callback": cb.toMap()})
+	return string(data)
+}
+
+// toMap converts the callback to a map for JSON serialization.
+func (cb Callback) toMap() map[string]any {
+	m := map[string]any{"url": cb.URL}
 	if cb.Target != "" {
-		payload["hxcmp:callback"].(map[string]any)["target"] = cb.Target
+		m["target"] = cb.Target
 	}
 	if cb.Swap != "" {
-		payload["hxcmp:callback"].(map[string]any)["swap"] = cb.Swap
+		m["swap"] = cb.Swap
 	}
 	if len(cb.Vals) > 0 {
-		payload["hxcmp:callback"].(map[string]any)["vals"] = cb.Vals
+		m["vals"] = cb.Vals
 	}
-	data, _ := json.Marshal(payload)
-	return string(data)
+	return m
 }
 
 // CallbackFromMap reconstructs a Callback from a decoded map.

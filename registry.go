@@ -185,7 +185,8 @@ func (reg *Registry) Add(components ...any) {
 	}
 }
 
-// registerComponent registers a single component.
+// registerComponent registers a single component by detecting whether it has
+// generated code (HXComponent interface) or requires reflection fallback.
 func (reg *Registry) registerComponent(comp any) {
 	// Check if component implements HXComponent (generated code)
 	if hxc, ok := comp.(HXComponent); ok {
@@ -244,11 +245,17 @@ func (reg *Registry) setEncoderOnComponent(comp any) {
 	}
 }
 
-// registerComponentReflection uses reflection to register a component.
+// registerComponentReflection uses reflection to register a component without
+// generated code. This fallback path enables rapid prototyping before running
+// 'hxcmp generate', but has important limitations:
 //
-// This is the fallback when generated code is not available. It's slower
-// and provides less compile-time safety than generated code, but allows
-// the system to work without code generation for prototyping.
+//   - No compile-time verification of action names or handler signatures
+//   - Slower per-request dispatch due to reflection overhead
+//   - Panics deferred to request time instead of registration time
+//
+// Production code should always use generated code for type safety and performance.
+// If this path is taken, it means the component doesn't implement HXComponent
+// (i.e., *_hx.go file is missing or out of date).
 func (reg *Registry) registerComponentReflection(comp any) {
 	val := reflect.ValueOf(comp)
 	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {

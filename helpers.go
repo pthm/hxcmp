@@ -98,7 +98,12 @@ func TargetID(r *http.Request) string {
 	return r.Header.Get("HX-Target")
 }
 
-// BuildTriggerHeader builds a properly formatted HX-Trigger header value.
+// BuildTriggerHeader builds a properly formatted HX-Trigger header value by merging
+// event triggers and deprecated callbacks into a single header.
+//
+// HTMX only allows one HX-Trigger header, so when both an event and callback are
+// present, they must be merged into a JSON object. The function optimizes for the
+// common case of simple events by returning a plain string when no data is needed.
 //
 // Supports three cases:
 //  1. Simple event name: "item-updated" -> "item-updated"
@@ -109,7 +114,8 @@ func TargetID(r *http.Request) string {
 // set to the data object. The hxcmp JS extension injects this data into
 // listener requests as parameters.
 //
-// Used by generated code in handleResult.
+// Used by generated code in handleResult. User code should use Result[P].Trigger()
+// instead of calling this directly.
 func BuildTriggerHeader(cb *Callback, trigger string, triggerData map[string]any) string {
 	if cb == nil && trigger == "" {
 		return ""

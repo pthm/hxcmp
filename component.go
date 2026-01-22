@@ -14,6 +14,7 @@ import (
 )
 
 // actionDef holds metadata about a registered action.
+// Stored in Component.actions map for lookup by generated dispatch code.
 type actionDef struct {
 	name    string
 	method  string
@@ -138,7 +139,11 @@ func (c *Component[P]) Actions() map[string]*actionDef {
 	return c.actions
 }
 
-// SetEncoder sets the encoder for this component (called by registry).
+// SetEncoder is called by the registry during component registration to provide
+// the shared encryption key. Components access this via c.Encoder() when building
+// action URLs with encoded props.
+//
+// User code should not call this directly.
 func (c *Component[P]) SetEncoder(enc *Encoder) {
 	c.encoder = enc
 }
@@ -154,8 +159,11 @@ func (c *Component[P]) SetParent(parent any) {
 	c.parent = parent
 }
 
-// SetOnError sets the centralized error handler.
-// Called by the registry during component registration.
+// SetOnError is called by the registry during component registration to install
+// the centralized error handler. Generated code calls c.OnError() to delegate
+// error responses.
+//
+// User code should not call this directly.
 func (c *Component[P]) SetOnError(handler ErrorHandler) {
 	c.onError = handler
 }
@@ -244,7 +252,15 @@ func (c *Component[P]) buildURL(action string, props P) string {
 }
 
 // componentHash generates a deterministic hash based on component name and source location.
-// This ensures each component instance gets a unique prefix without manual coordination.
+//
+// Determinism is critical because:
+//   - The same component constructor called from the same location must produce the same URL
+//   - URLs are embedded in rendered HTML and must be stable across requests
+//   - Registry prefix collision detection requires consistent prefixes
+//
+// The hash uses file:line:name to ensure different component instances (even with
+// the same name) get different prefixes if created at different call sites. This
+// eliminates the need for globally unique names while preventing route conflicts.
 func componentHash(name string, skip int) string {
 	_, file, line, ok := runtime.Caller(skip + 1)
 	var input string

@@ -65,6 +65,10 @@ func RenderFlashesOOB(flashes []Flash) string {
 
 // ToastContainer returns a templ component for the toast container.
 //
+// The container MUST have id="toasts" because flash messages target it via
+// hx-swap-oob="beforeend:#toasts". Without this ID, flash messages will fail
+// silently and not appear.
+//
 // Add this to your layout template (typically near the end of <body>):
 //
 //	@hxcmp.ToastContainer()

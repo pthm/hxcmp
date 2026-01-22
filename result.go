@@ -37,7 +37,7 @@ type Result[P any] struct {
 	flashes            []Flash
 	trigger            string
 	triggerData        map[string]any
-	triggerAfterSettle string // Event fired after swap settles (for URL sync)
+	triggerAfterSettle string    // Event fired after swap settles (for URL sync)
 	callback           *Callback // Deprecated: use Trigger with data instead
 	headers            map[string]string
 	status             int

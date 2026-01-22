@@ -51,21 +51,23 @@
 //
 // # Component Communication
 //
-// Components communicate through three patterns:
+// Components communicate through events and flash messages:
 //
-// 1. Callbacks: Parent passes Callback in props for child to invoke
+// 1. Events: Broadcast events via HX-Trigger for loose coupling
 //
-//	childProps.OnSave = c.Refresh(props).Target("#list").AsCallback()
-//	// Child: return hxcmp.OK(props).Callback(props.OnSave)
+//	// Emitter sends event with data:
+//	return hxcmp.OK(props).Trigger("item:saved", map[string]any{"id": item.ID})
 //
-// 2. Events: Broadcast events via HX-Trigger header
+//	// Listener responds to event in template:
+//	c.Refresh(props).OnEvent("item:saved").Attrs()
 //
-//	return hxcmp.OK(props).Trigger("item-updated")
-//	// Other components: c.Refresh(props).OnEvent("item-updated")
-//
-// 3. Flash messages: One-time notifications rendered as OOB swaps
+// 2. Flash messages: One-time notifications rendered as OOB swaps
 //
 //	return hxcmp.OK(props).Flash("success", "Saved!")
+//
+// Events decouple components - the emitter doesn't know who's listening.
+// The hxcmp JavaScript extension automatically injects event data into
+// listener requests as parameters.
 //
 // # Registration and Routing
 //
@@ -94,7 +96,7 @@
 // The system favors explicitness over magic:
 //   - Explicit registration (no init() side effects)
 //   - Explicit lifecycle (Hydrate/Render interfaces)
-//   - Explicit communication (Callbacks, not global state)
+//   - Explicit communication (Events, not global state)
 //   - Explicit security (Signed vs Encrypted via .Sensitive())
 //
 // This enables testability, clarity, and strong static guarantees while

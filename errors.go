@@ -28,7 +28,11 @@ var (
 	ErrInvalidFormat = errors.New("hxcmp: invalid parameter format")
 
 	// ErrHydrationFailed wraps errors from Hydrate implementations.
-	// Used by generated code to distinguish hydration errors from action errors.
+	//
+	// Generated code wraps Hydrate errors with this sentinel so OnError handlers
+	// can distinguish hydration failures (bad IDs, missing data) from action
+	// handler errors (business logic failures). User code should return raw
+	// errors from Hydrate - the framework handles wrapping automatically.
 	ErrHydrationFailed = errors.New("hxcmp: hydration failed")
 )
 

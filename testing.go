@@ -35,8 +35,12 @@ type TestableComponent[P any] interface {
 
 // TestRender renders a component and returns testable output.
 //
-// It runs the full hydration and render lifecycle without HTTP overhead.
-// Use this for pure unit tests of component rendering logic:
+// Use this for pure unit tests of rendering logic when you control props directly
+// and don't need HTTP mechanics. This bypasses URL encoding/decoding and runs
+// only Hydrate + Render.
+//
+// For testing action handlers (including encoding, routing, and Result processing),
+// use TestAction or the TestGet/TestPost convenience wrappers.
 //
 //	result, err := hxcmp.TestRender(comp, props)
 //	if !result.HTMLContains("expected text") {
