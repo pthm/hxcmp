@@ -1,6 +1,7 @@
 package hxcmp
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/a-h/templ"
@@ -95,4 +96,47 @@ func TriggerID(r *http.Request) string {
 // Returns empty string if not present.
 func TargetID(r *http.Request) string {
 	return r.Header.Get("HX-Target")
+}
+
+// BuildTriggerHeader builds a properly formatted HX-Trigger header value.
+//
+// When both callback and trigger are present, they must be merged into a
+// single JSON object. HTMX expects either bare event names or a JSON object,
+// but not both mixed with commas.
+//
+// Used by generated code in handleResult.
+func BuildTriggerHeader(cb *Callback, trigger string) string {
+	if cb == nil && trigger == "" {
+		return ""
+	}
+
+	// If only trigger (and no callback), return as simple event name
+	if cb == nil {
+		return trigger
+	}
+
+	// If callback exists, we need JSON format
+	// Build a merged JSON object with callback and trigger
+	merged := make(map[string]any)
+
+	// Add callback event
+	cbData := map[string]any{"url": cb.URL}
+	if cb.Target != "" {
+		cbData["target"] = cb.Target
+	}
+	if cb.Swap != "" {
+		cbData["swap"] = cb.Swap
+	}
+	if len(cb.Vals) > 0 {
+		cbData["vals"] = cb.Vals
+	}
+	merged["hxcmp:callback"] = cbData
+
+	// Add trigger event (if present)
+	if trigger != "" {
+		merged[trigger] = true
+	}
+
+	data, _ := json.Marshal(merged)
+	return string(data)
 }

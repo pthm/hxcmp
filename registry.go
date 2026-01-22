@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"sync"
 )
 
@@ -125,6 +126,10 @@ func (reg *Registry) registerComponent(comp any) {
 		}
 		reg.components[prefix] = comp
 
+		// Set the encoder on the embedded Component via reflection.
+		// Generated code accesses the encoder via c.Component.Encoder().
+		reg.setEncoderOnComponent(comp)
+
 		// Register the route pattern
 		pattern := prefix + "/"
 		reg.mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
@@ -136,6 +141,31 @@ func (reg *Registry) registerComponent(comp any) {
 	// Fallback: use reflection to find embedded Component and register manually.
 	// This path is for components without generated code (shouldn't be used in production).
 	reg.registerComponentReflection(comp)
+}
+
+// setEncoderOnComponent sets the encoder on a component's embedded Component field.
+// This is necessary because generated code accesses the encoder via c.Component.Encoder().
+func (reg *Registry) setEncoderOnComponent(comp any) {
+	val := reflect.ValueOf(comp)
+	if val.Kind() != reflect.Ptr {
+		return
+	}
+	val = val.Elem()
+	if val.Kind() != reflect.Struct {
+		return
+	}
+
+	// Find embedded *Component[P] field
+	compField, found := reg.findEmbeddedComponent(val)
+	if !found {
+		return
+	}
+
+	// Call SetEncoder on the embedded Component
+	setEncoderMethod := compField.MethodByName("SetEncoder")
+	if setEncoderMethod.IsValid() {
+		setEncoderMethod.Call([]reflect.Value{reflect.ValueOf(reg.encoder)})
+	}
 }
 
 // registerComponentReflection uses reflection to register a component.
@@ -194,10 +224,12 @@ func (reg *Registry) findEmbeddedComponent(val reflect.Value) (reflect.Value, bo
 		fieldVal := val.Field(i)
 		fieldType := field.Type
 
-		// Check if it's a pointer to Component
+		// Check if it's a pointer to Component[P]
+		// Generic types have names like "Component[pkg.PropsType]"
 		if fieldType.Kind() == reflect.Ptr {
 			elemType := fieldType.Elem()
-			if elemType.Name() == "Component" {
+			typeName := elemType.Name()
+			if typeName == "Component" || strings.HasPrefix(typeName, "Component[") {
 				return fieldVal, true
 			}
 		}

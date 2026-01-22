@@ -155,7 +155,8 @@ func (c *Component[P]) SetParent(parent any) {
 //
 //	c.Refresh(props).Target("#content").Attrs()
 func (c *Component[P]) Refresh(props P) *Action {
-	return NewAction(c.buildURL("", props), "GET")
+	path, encoded := c.buildActionURL("", props)
+	return NewActionWithProps(path, "GET", encoded)
 }
 
 // Lazy returns a templ component that defers rendering until viewport intersection.
@@ -167,7 +168,12 @@ func (c *Component[P]) Refresh(props P) *Action {
 //
 // Uses HTMX's "intersect once" trigger - loads once when entering viewport.
 func (c *Component[P]) Lazy(props P, placeholder templ.Component) templ.Component {
-	return lazyComponent(c.buildURL("", props), placeholder, "intersect once")
+	path, encoded := c.buildActionURL("", props)
+	url := path
+	if encoded != "" {
+		url = path + "?p=" + encoded
+	}
+	return lazyComponent(url, placeholder, "intersect once")
 }
 
 // Defer returns a templ component that loads after page load (not on intersection).
@@ -179,29 +185,44 @@ func (c *Component[P]) Lazy(props P, placeholder templ.Component) templ.Componen
 //
 // Uses HTMX's "load" trigger - fires once after page load completes.
 func (c *Component[P]) Defer(props P, placeholder templ.Component) templ.Component {
-	return lazyComponent(c.buildURL("", props), placeholder, "load")
+	path, encoded := c.buildActionURL("", props)
+	url := path
+	if encoded != "" {
+		url = path + "?p=" + encoded
+	}
+	return lazyComponent(url, placeholder, "load")
 }
 
-// buildURL constructs the URL for an action with encoded props.
+// buildActionURL constructs the path and encoded props for an action.
 // Empty action string means default render (GET).
-func (c *Component[P]) buildURL(action string, props P) string {
-	path := c.prefix + "/"
+func (c *Component[P]) buildActionURL(action string, props P) (path string, encoded string) {
+	path = c.prefix + "/"
 	if action != "" {
 		path = c.prefix + "/" + action
 	}
 
 	if c.encoder == nil {
 		// Fallback if encoder not set (shouldn't happen in normal use)
-		return path
+		return path, ""
 	}
 
 	encoded, err := c.encoder.Encode(props, c.sensitive)
 	if err != nil {
 		// In production, this should be logged
-		return path
+		return path, ""
 	}
 
-	return path + "?p=" + encoded
+	return path, encoded
+}
+
+// buildURL constructs the full URL for an action with encoded props.
+// Deprecated: Use buildActionURL for new code.
+func (c *Component[P]) buildURL(action string, props P) string {
+	path, encoded := c.buildActionURL(action, props)
+	if encoded != "" {
+		return path + "?p=" + encoded
+	}
+	return path
 }
 
 // componentHash generates a deterministic hash based on component name and source location.

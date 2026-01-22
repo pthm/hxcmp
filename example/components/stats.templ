@@ -1,0 +1,39 @@
+package components
+
+import "fmt"
+
+templ statsTemplate(c *Stats, props StatsProps) {
+	<div
+		class="stats"
+		{ c.RefreshAction(props).SwapOuter().Attrs()... }
+	>
+		<h3>Statistics</h3>
+		<div class="stats-grid">
+			<div class="stat-card">
+				<span class="stat-value">{ fmt.Sprint(props.Stats.Total) }</span>
+				<span class="stat-label">Total</span>
+			</div>
+			<div class="stat-card completed">
+				<span class="stat-value">{ fmt.Sprint(props.Stats.Completed) }</span>
+				<span class="stat-label">Completed</span>
+			</div>
+			<div class="stat-card pending">
+				<span class="stat-value">{ fmt.Sprint(props.Stats.Pending) }</span>
+				<span class="stat-label">Pending</span>
+			</div>
+		</div>
+		if len(props.Stats.ByTag) > 0 {
+			<div class="stats-tags">
+				<h4>By Tag</h4>
+				<div class="tag-stats">
+					for tag, count := range props.Stats.ByTag {
+						<div class="tag-stat">
+							<span class={ "tag", "tag-" + string(tag) }>{ string(tag) }</span>
+							<span class="tag-count">{ fmt.Sprint(count) }</span>
+						</div>
+					}
+				</div>
+			</div>
+		}
+	</div>
+}

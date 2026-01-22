@@ -1,0 +1,51 @@
+package components
+
+templ sidebarTemplate(c *Sidebar, props SidebarProps) {
+	<div class="filters">
+		<h3>Filters</h3>
+		<form>
+			<div class="filter-group">
+				<label class="filter-label">Status</label>
+				<div class="filter-options">
+					<label class="filter-option">
+						<input
+							type="radio"
+							name="status"
+							value=""
+							checked?={ props.CurrentStatus == "" }
+							{ c.Filter(props).Target(".filters").SwapOuter().Attrs()... }
+						/>
+						<span>All</span>
+					</label>
+					<label class="filter-option">
+						<input
+							type="radio"
+							name="status"
+							value="pending"
+							checked?={ props.CurrentStatus == "pending" }
+							{ c.Filter(props).Target(".filters").SwapOuter().Attrs()... }
+						/>
+						<span>Pending</span>
+					</label>
+					<label class="filter-option">
+						<input
+							type="radio"
+							name="status"
+							value="completed"
+							checked?={ props.CurrentStatus == "completed" }
+							{ c.Filter(props).Target(".filters").SwapOuter().Attrs()... }
+						/>
+						<span>Completed</span>
+					</label>
+				</div>
+			</div>
+			<button
+				type="button"
+				class="clear-btn"
+				{ c.Clear(props).Target(".filters").SwapOuter().Attrs()... }
+			>
+				Clear Filters
+			</button>
+		</form>
+	</div>
+}

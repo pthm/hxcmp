@@ -1,0 +1,43 @@
+package components
+
+templ todoItemTemplate(c *TodoItem, props TodoItemProps) {
+	if props.Todo == nil {
+		<div class="todo-item error">
+			<p>Todo not found</p>
+		</div>
+	} else {
+		<div class={ "todo-item", templ.KV("completed", props.Todo.IsCompleted()) }>
+			<div class="todo-checkbox">
+				<button
+					class="toggle-btn"
+					{ c.Toggle(props).TargetClosest(".todo-item-wrapper").Indicator(".toggle-btn").Attrs()... }
+				>
+					if props.Todo.IsCompleted() {
+						<span class="check">&#10003;</span>
+					} else {
+						<span class="circle"></span>
+					}
+				</button>
+			</div>
+			<div class="todo-content">
+				<span class="todo-title">{ props.Todo.Title }</span>
+				if props.Todo.Description != "" {
+					<p class="todo-description">{ props.Todo.Description }</p>
+				}
+				<div class="todo-tags">
+					for _, tag := range props.Todo.Tags {
+						<span class={ "tag", "tag-" + string(tag) }>{ string(tag) }</span>
+					}
+				</div>
+			</div>
+			<div class="todo-actions">
+				<button
+					class="delete-btn"
+					{ c.Delete(props).TargetClosest(".todo-item-wrapper").SwapDelete().Confirm("Are you sure?").Indicator(".delete-btn").Attrs()... }
+				>
+					&times;
+				</button>
+			</div>
+		</div>
+	}
+}

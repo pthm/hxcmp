@@ -41,24 +41,38 @@ func (ab *ActionBuilder) Method(m string) *ActionBuilder {
 // The builder exposes HTMX functionality directly rather than hiding it,
 // enabling full control over swap strategies, targets, and triggers.
 type Action struct {
-	url       string
-	method    string
-	target    string
-	swap      SwapMode
-	trigger   string
-	indicator string
-	confirm   string
-	pushURL   bool
-	vals      map[string]any
+	url          string // Full URL (for backwards compat) or base path
+	method       string
+	target       string
+	swap         SwapMode
+	trigger      string
+	indicator    string
+	confirm      string
+	pushURL      bool
+	vals         map[string]any
+	encodedProps string // Encoded props to send separately for POST/PUT/DELETE
 }
 
 // NewAction creates a new action with URL and method.
 // Called by generated code and Component.Refresh().
+// Deprecated: Use NewActionWithProps for proper body encoding on POST.
 func NewAction(url, method string) *Action {
 	return &Action{
 		url:    url,
 		method: method,
 		swap:   SwapOuter, // Default to replacing the entire element
+	}
+}
+
+// NewActionWithProps creates an action with path and encoded props.
+// For GET requests, props are added as query parameter.
+// For POST/PUT/DELETE, props are sent in the request body via hx-vals.
+func NewActionWithProps(path, method, encodedProps string) *Action {
+	return &Action{
+		url:          path,
+		method:       method,
+		swap:         SwapOuter,
+		encodedProps: encodedProps,
 	}
 }
 
@@ -313,21 +327,30 @@ func (a *Action) Vals(v map[string]any) *Action {
 //	<button {...c.Edit(props).Target("#editor").Confirm("Save?").Attrs()}>
 //	    Save
 //	</button>
+//
+// For GET requests, encoded props are added to the URL as query param.
+// For POST/PUT/DELETE/PATCH, props are sent in the request body via hx-vals.
 func (a *Action) Attrs() templ.Attributes {
 	attrs := templ.Attributes{}
+
+	// Build the URL - for GET include props in query string, for others use base path
+	url := a.url
+	if a.encodedProps != "" && (a.method == http.MethodGet || a.method == "") {
+		url = a.url + "?p=" + a.encodedProps
+	}
 
 	// Set method-specific attribute
 	switch a.method {
 	case http.MethodGet, "":
-		attrs["hx-get"] = a.url
+		attrs["hx-get"] = url
 	case http.MethodPost:
-		attrs["hx-post"] = a.url
+		attrs["hx-post"] = url
 	case http.MethodPut:
-		attrs["hx-put"] = a.url
+		attrs["hx-put"] = url
 	case http.MethodPatch:
-		attrs["hx-patch"] = a.url
+		attrs["hx-patch"] = url
 	case http.MethodDelete:
-		attrs["hx-delete"] = a.url
+		attrs["hx-delete"] = url
 	}
 
 	if a.target != "" {
@@ -348,7 +371,17 @@ func (a *Action) Attrs() templ.Attributes {
 	if a.pushURL {
 		attrs["hx-push-url"] = "true"
 	}
-	if len(a.vals) > 0 {
+
+	// Build hx-vals - merge user vals with encoded props for non-GET methods
+	if a.encodedProps != "" && a.method != http.MethodGet && a.method != "" {
+		mergedVals := make(map[string]any)
+		for k, v := range a.vals {
+			mergedVals[k] = v
+		}
+		mergedVals["p"] = a.encodedProps
+		data, _ := json.Marshal(mergedVals)
+		attrs["hx-vals"] = string(data)
+	} else if len(a.vals) > 0 {
 		data, _ := json.Marshal(a.vals)
 		attrs["hx-vals"] = string(data)
 	}
@@ -368,12 +401,15 @@ func (a *Action) AsLink() templ.Attributes {
 	}
 }
 
-// URL returns just the action URL.
+// URL returns the action URL with encoded props (for GET-style access).
 //
 // Useful for manual attribute construction or passing to JavaScript:
 //
 //	data-action-url={c.Submit(props).URL()}
 func (a *Action) URL() string {
+	if a.encodedProps != "" {
+		return a.url + "?p=" + a.encodedProps
+	}
 	return a.url
 }
 

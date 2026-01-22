@@ -1,0 +1,129 @@
+package components
+
+import "time"
+
+templ taskDetailTemplate(c *TaskDetail, props TaskDetailProps) {
+	<div class="task-detail">
+		if props.Todo == nil {
+			<div class="error-state">
+				<h2>Todo Not Found</h2>
+				<p>The requested todo does not exist.</p>
+				<a href="/" hx-get="/" hx-target="body" hx-push-url="true" class="back-link">
+					&larr; Back to list
+				</a>
+			</div>
+		} else {
+			<div class="task-header">
+				<div class="task-status">
+					<button
+						class={ "status-btn", templ.KV("completed", props.Todo.IsCompleted()) }
+						{ c.Toggle(props).Target(".task-detail").SwapOuter().Indicator(".status-btn").Attrs()... }
+					>
+						if props.Todo.IsCompleted() {
+							<span class="check">&#10003;</span> Completed
+						} else {
+							<span class="circle"></span> Pending
+						}
+					</button>
+				</div>
+				<button
+					class="delete-btn-large"
+					{ c.Delete(props).Confirm("Are you sure you want to delete this todo?").Attrs()... }
+				>
+					Delete
+				</button>
+			</div>
+			// Inline editable title section - demonstrates HTMX swap patterns
+			<div class="title-section" id="title-section">
+				if props.EditingTitle {
+					// Edit mode: show input with save/cancel
+					<form class="title-edit-form">
+						<input
+							type="text"
+							name="title"
+							value={ props.Todo.Title }
+							class="title-input"
+							placeholder="Enter title..."
+							autofocus
+						/>
+						<div class="title-edit-actions">
+							<button
+								type="submit"
+								class="title-save-btn"
+								{ c.SaveTitle(props).Target(".task-detail").SwapOuter().Attrs()... }
+							>
+								Save
+							</button>
+							<button
+								type="button"
+								class="title-cancel-btn"
+								{ c.CancelEdit(props).Target(".task-detail").SwapOuter().Attrs()... }
+							>
+								Cancel
+							</button>
+						</div>
+					</form>
+				} else {
+					// Display mode: show title as heading with edit button
+					<div class="title-display">
+						<h2 class="task-title">{ props.Todo.Title }</h2>
+						<button
+							type="button"
+							class="title-edit-btn"
+							title="Edit title"
+							{ c.EditTitle(props).Target(".task-detail").SwapOuter().Attrs()... }
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+								<path d="m15 5 4 4"></path>
+							</svg>
+						</button>
+					</div>
+				}
+			</div>
+			<form class="task-form">
+				<div class="form-group">
+					<label for="description">Description</label>
+					<textarea
+						id="description"
+						name="description"
+						class="input-large"
+						rows="4"
+					>{ props.Todo.Description }</textarea>
+				</div>
+				<div class="form-group">
+					<label>Tags</label>
+					<div class="tag-checkboxes">
+						for _, tag := range AllTags() {
+							<label class="tag-checkbox">
+								<input
+									type="checkbox"
+									name="tags"
+									value={ string(tag) }
+									checked?={ props.Todo.HasTag(tag) }
+								/>
+								<span class={ "tag", "tag-" + string(tag) }>{ string(tag) }</span>
+							</label>
+						}
+					</div>
+				</div>
+				<div class="form-actions">
+					<button
+						type="submit"
+						class="save-btn"
+						{ c.Update(props).Target(".task-detail").SwapOuter().Attrs()... }
+					>
+						Save Changes
+					</button>
+					<a href="/" hx-get="/" hx-target="body" hx-push-url="true" class="cancel-btn">
+						Cancel
+					</a>
+				</div>
+			</form>
+			<div class="task-meta">
+				<p>Created: { props.Todo.CreatedAt.Format(time.RFC822) }</p>
+				<p>Updated: { props.Todo.UpdatedAt.Format(time.RFC822) }</p>
+			</div>
+		}
+	</div>
+}

@@ -1,0 +1,88 @@
+package main
+
+import (
+	"github.com/pthm/hxcmp"
+	"github.com/pthm/hxcmp/example/components"
+)
+
+// Layout renders the main 2-column page layout.
+// Components accessed directly via components.C (initialized at startup).
+templ Layout() {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>Todo App - hxcmp Example</title>
+			<link rel="stylesheet" href="/static/styles.css"/>
+			<script src="https://unpkg.com/htmx.org@2.0.0"></script>
+			<script src="/static/hxcmp-ext.js"></script>
+		</head>
+		<body hx-boost="true">
+			<div class="app">
+				<header class="header">
+					<h1>Todo App</h1>
+					<p class="subtitle">hxcmp Example</p>
+				</header>
+				<div class="layout">
+					<aside class="sidebar">
+						@components.C.Sidebar.Render(ctx, components.SidebarProps{
+							OnFilter: components.C.TodoList.Refresh(components.TodoListProps{}).Target("#todo-list").AsCallback(),
+						})
+					</aside>
+					<main class="main">
+						<div class="add-section">
+							@components.C.AddTodo.Render(ctx, components.AddTodoProps{
+								OnAdd: components.C.TodoList.Refresh(components.TodoListProps{}).Target("#todo-list").AsCallback(),
+							})
+						</div>
+						<div class="todo-list-section">
+							@components.C.TodoList.Render(ctx, components.TodoListProps{})
+						</div>
+						<div class="stats-section">
+							@components.C.Stats.Lazy(components.StatsProps{}, statsPlaceholder())
+						</div>
+					</main>
+				</div>
+			</div>
+			@hxcmp.ToastContainer()
+		</body>
+	</html>
+}
+
+// TaskDetailLayout renders the layout for the task detail page.
+templ TaskDetailLayout(todoID string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>Task Detail - hxcmp Example</title>
+			<link rel="stylesheet" href="/static/styles.css"/>
+			<script src="https://unpkg.com/htmx.org@2.0.0"></script>
+			<script src="/static/hxcmp-ext.js"></script>
+		</head>
+		<body hx-boost="true">
+			<div class="app">
+				<header class="header">
+					<h1>Todo App</h1>
+					<p class="subtitle">
+						<a href="/">Back to List</a>
+					</p>
+				</header>
+				<main class="main detail-page">
+					@components.C.TaskDetail.Render(ctx, components.TaskDetailProps{TodoID: todoID})
+				</main>
+			</div>
+			@hxcmp.ToastContainer()
+		</body>
+	</html>
+}
+
+// statsPlaceholder renders the loading placeholder for lazy-loaded stats.
+templ statsPlaceholder() {
+	<div class="stats-placeholder">
+		<div class="loading-spinner"></div>
+		<p>Loading stats...</p>
+	</div>
+}

@@ -129,6 +129,11 @@ func (g *Generator) generatePackage(pkgPath string) error {
 			continue
 		}
 
+		// Generate helpers file once per package
+		if err := g.generateHelpers(pkgPath, pkgName); err != nil {
+			return err
+		}
+
 		for _, comp := range components {
 			if err := g.generateComponent(pkgPath, pkgName, comp); err != nil {
 				return err
@@ -153,7 +158,8 @@ func (g *Generator) cleanPackage(pkgPath string) error {
 		if entry.IsDir() {
 			continue
 		}
-		if strings.HasSuffix(entry.Name(), "_hx.go") {
+		// Remove both *_hx.go and hx_helpers.go files
+		if strings.HasSuffix(entry.Name(), "_hx.go") || entry.Name() == "hx_helpers.go" {
 			path := filepath.Join(pkgPath, entry.Name())
 			fmt.Printf("removing %s\n", path)
 			if !g.opts.DryRun {
@@ -349,7 +355,11 @@ func (g *Generator) findPropsFields(file *ast.File, propsTypeName string) []Prop
 
 // findActions finds action registrations in the component's New function.
 func (g *Generator) findActions(file *ast.File, typeName string) []ActionInfo {
-	var actions []ActionInfo
+	// Use a map to deduplicate actions by name.
+	// When an action is registered with .Method(), it may be found twice
+	// (once via the chain, once via the inner c.Action call).
+	// Keep the version with a custom method over the default POST.
+	actionMap := make(map[string]ActionInfo)
 
 	// Look for function declarations
 	for _, decl := range file.Decls {
@@ -358,52 +368,118 @@ func (g *Generator) findActions(file *ast.File, typeName string) []ActionInfo {
 			continue
 		}
 
-		// Look for c.Action(...) calls
+		// Look for c.Action(...) calls, potentially chained with .Method(...)
 		ast.Inspect(funcDecl.Body, func(n ast.Node) bool {
-			callExpr, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-
-			// Check if it's a method call on 'c'
-			selExpr, ok := callExpr.Fun.(*ast.SelectorExpr)
-			if !ok {
-				return true
-			}
-
-			if selExpr.Sel.Name != "Action" {
-				return true
-			}
-
-			// Extract action name
-			if len(callExpr.Args) < 2 {
-				return true
-			}
-
-			nameLit, ok := callExpr.Args[0].(*ast.BasicLit)
-			if !ok || nameLit.Kind != token.STRING {
-				return true
-			}
-
-			actionName := strings.Trim(nameLit.Value, `"`)
-			action := ActionInfo{
-				Name:   actionName,
-				Method: "POST", // Default
-			}
-
-			// Try to extract handler name
-			if len(callExpr.Args) >= 2 {
-				if sel, ok := callExpr.Args[1].(*ast.SelectorExpr); ok {
-					action.Handler = sel.Sel.Name
+			if callExpr, ok := n.(*ast.CallExpr); ok {
+				action := g.extractActionFromCall(callExpr)
+				if action != nil {
+					// Keep the version with custom method over default POST
+					existing, exists := actionMap[action.Name]
+					if !exists || (existing.Method == "POST" && action.Method != "POST") {
+						actionMap[action.Name] = *action
+					}
 				}
 			}
-
-			actions = append(actions, action)
 			return true
 		})
 	}
 
+	// Convert map to slice
+	var actions []ActionInfo
+	for _, action := range actionMap {
+		actions = append(actions, action)
+	}
+
 	return actions
+}
+
+// extractActionFromCall extracts action info from a call expression.
+// Handles both c.Action("name", handler) and c.Action("name", handler).Method(method) chains.
+func (g *Generator) extractActionFromCall(callExpr *ast.CallExpr) *ActionInfo {
+	// Check if this is a .Method(...) call chained on Action
+	if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
+		if selExpr.Sel.Name == "Method" {
+			// This is .Method(...) - find the underlying Action call
+			if innerCall, ok := selExpr.X.(*ast.CallExpr); ok {
+				action := g.extractActionCall(innerCall)
+				if action != nil {
+					// Extract the method from .Method(...) args
+					if len(callExpr.Args) >= 1 {
+						action.Method = g.extractMethodArg(callExpr.Args[0])
+					}
+					return action
+				}
+			}
+			return nil
+		}
+
+		// Check if this is c.Action(...) directly
+		if selExpr.Sel.Name == "Action" {
+			return g.extractActionCall(callExpr)
+		}
+	}
+
+	return nil
+}
+
+// extractActionCall extracts action info from a c.Action("name", handler) call.
+func (g *Generator) extractActionCall(callExpr *ast.CallExpr) *ActionInfo {
+	selExpr, ok := callExpr.Fun.(*ast.SelectorExpr)
+	if !ok || selExpr.Sel.Name != "Action" {
+		return nil
+	}
+
+	// Extract action name
+	if len(callExpr.Args) < 2 {
+		return nil
+	}
+
+	nameLit, ok := callExpr.Args[0].(*ast.BasicLit)
+	if !ok || nameLit.Kind != token.STRING {
+		return nil
+	}
+
+	actionName := strings.Trim(nameLit.Value, `"`)
+	action := ActionInfo{
+		Name:   actionName,
+		Method: "POST", // Default
+	}
+
+	// Try to extract handler name
+	if sel, ok := callExpr.Args[1].(*ast.SelectorExpr); ok {
+		action.Handler = sel.Sel.Name
+	}
+
+	return &action
+}
+
+// extractMethodArg extracts the HTTP method from an argument to .Method().
+// Handles http.MethodGet, http.MethodPost, http.MethodDelete, etc.
+func (g *Generator) extractMethodArg(arg ast.Expr) string {
+	switch a := arg.(type) {
+	case *ast.SelectorExpr:
+		// http.MethodGet, http.MethodPost, etc.
+		if ident, ok := a.X.(*ast.Ident); ok && ident.Name == "http" {
+			switch a.Sel.Name {
+			case "MethodGet":
+				return "GET"
+			case "MethodPost":
+				return "POST"
+			case "MethodPut":
+				return "PUT"
+			case "MethodPatch":
+				return "PATCH"
+			case "MethodDelete":
+				return "DELETE"
+			}
+		}
+	case *ast.BasicLit:
+		// String literal like "GET", "POST"
+		if a.Kind == token.STRING {
+			return strings.Trim(a.Value, `"`)
+		}
+	}
+	return "POST" // Default
 }
 
 // typeToString converts an AST type to a string representation.

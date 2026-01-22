@@ -1,0 +1,42 @@
+package components
+
+templ addTodoTemplate(c *AddTodo, props AddTodoProps) {
+	<form class="add-todo-form" hx-swap="outerHTML">
+		<h3>Add Todo</h3>
+		<div class="form-row">
+			<input
+				type="text"
+				name="title"
+				placeholder="What needs to be done?"
+				class="input-title"
+				required
+			/>
+		</div>
+		<div class="form-row">
+			<textarea
+				name="description"
+				placeholder="Description (optional)"
+				class="input-description"
+				rows="2"
+			></textarea>
+		</div>
+		<div class="form-row tags-row">
+			<label>Tags:</label>
+			<div class="tag-checkboxes">
+				for _, tag := range AllTags() {
+					<label class="tag-checkbox">
+						<input type="checkbox" name="tags" value={ string(tag) }/>
+						<span class={ "tag", "tag-" + string(tag) }>{ string(tag) }</span>
+					</label>
+				}
+			</div>
+		</div>
+		<button
+			type="submit"
+			class="add-btn"
+			{ c.Add(props).Target(".add-todo-form").SwapOuter().Attrs()... }
+		>
+			Add Todo
+		</button>
+	</form>
+}

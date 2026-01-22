@@ -28,9 +28,10 @@ import "encoding/json"
 // by the hxcmp JavaScript extension, which triggers the callback's URL with
 // the specified target and swap mode.
 type Callback struct {
-	URL    string `json:"u"`           // Action URL with encoded props
-	Target string `json:"t,omitempty"` // Target selector
-	Swap   string `json:"s,omitempty"` // Swap mode
+	URL    string         `json:"u"`           // Action URL with encoded props
+	Target string         `json:"t,omitempty"` // Target selector
+	Swap   string         `json:"s,omitempty"` // Swap mode
+	Vals   map[string]any `json:"v,omitempty"` // Dynamic values to append as query params
 }
 
 // IsZero returns true if the callback is empty/unset.
@@ -61,6 +62,9 @@ func (cb Callback) TriggerJSON() string {
 	if cb.Swap != "" {
 		payload["hxcmp:callback"].(map[string]any)["swap"] = cb.Swap
 	}
+	if len(cb.Vals) > 0 {
+		payload["hxcmp:callback"].(map[string]any)["vals"] = cb.Vals
+	}
 	data, _ := json.Marshal(payload)
 	return string(data)
 }
@@ -80,5 +84,19 @@ func CallbackFromMap(m map[string]any) Callback {
 	if v, ok := m["s"].(string); ok {
 		cb.Swap = v
 	}
+	if v, ok := m["v"].(map[string]any); ok {
+		cb.Vals = v
+	}
+	return cb
+}
+
+// WithVals returns a copy of the callback with the specified values.
+// These values will be appended as query parameters when the callback is triggered.
+//
+// Example:
+//
+//	return hxcmp.OK(props).Callback(props.OnFilter.WithVals(map[string]any{"status": "pending"}))
+func (cb Callback) WithVals(vals map[string]any) Callback {
+	cb.Vals = vals
 	return cb
 }

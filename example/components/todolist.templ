@@ -1,0 +1,69 @@
+package components
+
+templ todoListTemplate(props TodoListProps) {
+	<div id="todo-list" class="todo-list">
+		if len(props.Todos) == 0 {
+			<div class="empty-state">
+				<p>No todos found.</p>
+				if props.FilterStatus != "" || len(props.FilterTags) > 0 {
+					<p class="hint">Try adjusting your filters.</p>
+				} else {
+					<p class="hint">Add one using the form above!</p>
+				}
+			</div>
+		} else {
+			for _, todo := range props.Todos {
+				@todoItemInList(props, todo)
+			}
+		}
+	</div>
+}
+
+templ todoItemInList(listProps TodoListProps, todo *Todo) {
+	<div class="todo-item-wrapper" id={ "todo-wrapper-" + todo.ID }>
+		<div class={ "todo-item", templ.KV("completed", todo.IsCompleted()) }>
+			<div class="todo-checkbox">
+				<button
+					class="toggle-btn"
+					{ C.TodoItem.Toggle(TodoItemProps{
+						TodoID: todo.ID,
+						OnChange: C.TodoList.Refresh(listProps).Target("#todo-list").AsCallback(),
+					}).TargetClosest(".todo-item-wrapper").Indicator(".toggle-btn").Attrs()... }
+				>
+					if todo.IsCompleted() {
+						<span class="check">&#10003;</span>
+					} else {
+						<span class="circle"></span>
+					}
+				</button>
+			</div>
+			<div class="todo-content">
+				<a
+					href={ templ.SafeURL("/task/" + todo.ID) }
+					class="todo-title"
+				>
+					{ todo.Title }
+				</a>
+				if todo.Description != "" {
+					<p class="todo-description">{ todo.Description }</p>
+				}
+				<div class="todo-tags">
+					for _, tag := range todo.Tags {
+						<span class={ "tag", "tag-" + string(tag) }>{ string(tag) }</span>
+					}
+				</div>
+			</div>
+			<div class="todo-actions">
+				<button
+					class="delete-btn"
+					{ C.TodoItem.Delete(TodoItemProps{
+						TodoID: todo.ID,
+						OnChange: C.TodoList.Refresh(listProps).Target("#todo-list").AsCallback(),
+					}).TargetClosest(".todo-item-wrapper").SwapDelete().Confirm("Are you sure you want to delete this todo?").Indicator(".delete-btn").Attrs()... }
+				>
+					&times;
+				</button>
+			</div>
+		</div>
+	</div>
+}
