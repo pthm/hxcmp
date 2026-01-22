@@ -307,11 +307,7 @@ func (c *{{.Component.TypeName}}) handleResult(w http.ResponseWriter, r *http.Re
 {{range .Component.Actions}}
 // {{camelToTitle .Name}} returns an action builder for the "{{.Name}}" action.
 func (c *{{$.Component.TypeName}}) {{camelToTitle .Name}}(props {{$.Component.PropsType}}) *hxcmp.Action {
-	return &hxcmp.Action{
-		URL:    c.buildURL("{{.Name}}", props),
-		Method: "{{if eq .Method ""}}POST{{else}}{{.Method}}{{end}}",
-		Swap:   hxcmp.SwapOuter,
-	}
+	return hxcmp.NewAction(c.buildURL("{{.Name}}", props), "{{if eq .Method ""}}POST{{else}}{{.Method}}{{end}}")
 }
 {{end}}
 

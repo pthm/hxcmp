@@ -97,11 +97,7 @@ func (c *Component[P]) SetParent(parent any) {
 
 // Refresh returns an action builder for the default render (GET).
 func (c *Component[P]) Refresh(props P) *Action {
-	return &Action{
-		URL:    c.buildURL("", props),
-		Method: "GET",
-		Swap:   SwapOuter,
-	}
+	return NewAction(c.buildURL("", props), "GET")
 }
 
 // Lazy returns a templ component that defers rendering until viewport intersection.
