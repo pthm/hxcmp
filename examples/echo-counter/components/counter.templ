@@ -1,0 +1,26 @@
+package components
+
+import "fmt"
+
+templ counterTemplate(c *Counter, props CounterProps) {
+	<div class="counter" id="counter">
+		<div class="count">{ fmt.Sprintf("%d", props.Count) }</div>
+		<div class="actions">
+			<button
+				{ c.Decrement(props).Target("#counter").SwapOuter().Attrs()... }
+			>
+				-
+			</button>
+			<button
+				{ c.Reset(props).Target("#counter").SwapOuter().Attrs()... }
+			>
+				Reset
+			</button>
+			<button
+				{ c.Increment(props).Target("#counter").SwapOuter().Attrs()... }
+			>
+				+
+			</button>
+		</div>
+	</div>
+}

@@ -239,9 +239,9 @@ result.WasRedirected()
 
 Use `MockHydrater` to inject test data without real dependencies.
 
-## Example
+## Examples
 
-A complete working example with multiple interacting components is available in the [`example`](./example) directory of this repository.
+A complete working example with multiple interacting components is available in the [`examples/todo`](./examples/todo) directory of this repository.
 
 ## Dependencies
 

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pthm/hxcmp/example/components"
+	"github.com/pthm/hxcmp/examples/todo/components"
 )
 
 // Store is an in-memory todo store that implements components.TodoStore.

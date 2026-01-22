@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/pthm/hxcmp"
-	"github.com/pthm/hxcmp/example/components"
+	"github.com/pthm/hxcmp/examples/todo/components"
 )
 
 //go:embed static

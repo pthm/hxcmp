@@ -1,4 +1,4 @@
-module github.com/pthm/hxcmp/example
+module github.com/pthm/hxcmp/examples/todo
 
 go 1.23.0
 
@@ -12,4 +12,4 @@ require (
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 )
 
-replace github.com/pthm/hxcmp => ../
+replace github.com/pthm/hxcmp => ../../

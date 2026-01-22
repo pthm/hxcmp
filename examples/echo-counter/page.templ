@@ -1,0 +1,56 @@
+package main
+
+import "github.com/pthm/hxcmp/examples/echo-counter/components"
+
+templ page() {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>Counter - hxcmp + Echo Example</title>
+			<script src="https://unpkg.com/htmx.org@2.0.0"></script>
+			<style>
+				body {
+					font-family: system-ui, sans-serif;
+					display: flex;
+					justify-content: center;
+					align-items: center;
+					min-height: 100vh;
+					margin: 0;
+					background: #f5f5f5;
+				}
+				.counter {
+					background: white;
+					border-radius: 12px;
+					padding: 2rem 3rem;
+					box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+					text-align: center;
+				}
+				.count {
+					font-size: 4rem;
+					font-weight: bold;
+					margin: 1rem 0;
+				}
+				.actions {
+					display: flex;
+					gap: 0.5rem;
+				}
+				button {
+					font-size: 1.2rem;
+					padding: 0.5rem 1.5rem;
+					border: 1px solid #ddd;
+					border-radius: 6px;
+					background: white;
+					cursor: pointer;
+				}
+				button:hover {
+					background: #f0f0f0;
+				}
+			</style>
+		</head>
+		<body>
+			@components.CounterCmp().RenderHydrated(ctx, components.CounterProps{})
+		</body>
+	</html>
+}
