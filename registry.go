@@ -345,7 +345,7 @@ func (reg *Registry) handleRequest(comp any, compField reflect.Value, w http.Res
 		// Get the decoder method if it exists
 		if decoder, ok := propsPtr.Interface().(Decodable); ok {
 			if err := reg.encoder.Decode(encoded, reg.isSensitive(compField), decoder); err != nil {
-				reg.OnError(w, r, err)
+				reg.OnError(w, r, WrapDecodeError(err))
 				return
 			}
 		}

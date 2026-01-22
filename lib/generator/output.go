@@ -312,7 +312,7 @@ func (c *{{.Component.TypeName}}) HXServeHTTP(w http.ResponseWriter, r *http.Req
 	var props {{.Component.PropsType}}
 	if encoded != "" {
 		if err := c.Component.Encoder().Decode(encoded, c.IsSensitive(), &props); err != nil {
-			c.handleError(w, r, err)
+			c.handleError(w, r, hxcmp.WrapDecodeError(err))
 			return
 		}
 	}

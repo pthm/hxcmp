@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+
+	"github.com/pthm/hxcmp/lib/encoding"
 )
 
 func TestSentinelErrors(t *testing.T) {
@@ -142,5 +144,36 @@ func TestErrorComponent_HTMLEscaping(t *testing.T) {
 	// Should contain escaped version
 	if !bytes.Contains([]byte(html), []byte("&lt;script&gt;")) {
 		t.Errorf("ErrorComponent should contain HTML-escaped message: %s", html)
+	}
+}
+
+func TestWrapDecodeError(t *testing.T) {
+	tests := []struct {
+		name           string
+		err            error
+		expectWrapped  error
+		isDecryptError bool
+	}{
+		{"nil error", nil, nil, false},
+		{"encoding.ErrInvalidFormat", encoding.ErrInvalidFormat, ErrInvalidFormat, false},
+		{"encoding.ErrSignatureInvalid", encoding.ErrSignatureInvalid, ErrSignatureInvalid, true},
+		{"encoding.ErrDecryptFailed", encoding.ErrDecryptFailed, ErrDecryptFailed, true},
+		{"other error passthrough", errors.New("other"), nil, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := WrapDecodeError(tt.err)
+
+			if tt.expectWrapped != nil {
+				if !errors.Is(result, tt.expectWrapped) {
+					t.Errorf("WrapDecodeError(%v) = %v, want %v", tt.err, result, tt.expectWrapped)
+				}
+			}
+
+			if tt.isDecryptError && !IsDecryptionError(result) {
+				t.Errorf("WrapDecodeError(%v) should be detected by IsDecryptionError", tt.err)
+			}
+		})
 	}
 }

@@ -54,11 +54,19 @@ func NewEncoder(key []byte) (*Encoder, error) {
 	return encoding.NewEncoder(key)
 }
 
-// wrapEncodingError wraps encoding package errors with hxcmp sentinel errors.
+// WrapDecodeError wraps encoding package errors with hxcmp sentinel errors.
 //
 // This provides a stable error API at the hxcmp package level while allowing
-// the encoding package to remain independent.
-func wrapEncodingError(err error) error {
+// the encoding package to remain independent. Call this when decoding props
+// to ensure errors are properly classified by IsDecryptionError and similar
+// helper functions.
+//
+// Example:
+//
+//	if err := encoder.Decode(encoded, sensitive, &props); err != nil {
+//	    return hxcmp.WrapDecodeError(err) // Now IsDecryptionError works
+//	}
+func WrapDecodeError(err error) error {
 	if err == nil {
 		return nil
 	}
