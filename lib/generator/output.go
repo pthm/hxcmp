@@ -370,6 +370,10 @@ func (c *{{.Component.TypeName}}) handleResult(w http.ResponseWriter, r *http.Re
 	if triggerHeader := hxcmp.BuildTriggerHeader(result.GetCallback(), result.GetTrigger(), result.GetTriggerData()); triggerHeader != "" {
 		w.Header().Set("HX-Trigger", triggerHeader)
 	}
+	// Handle after-settle triggers (for URL sync - fires after URL is updated)
+	if afterSettle := result.GetTriggerAfterSettle(); afterSettle != "" {
+		w.Header().Set("HX-Trigger-After-Settle", afterSettle)
+	}
 	if result.ShouldSkip() {
 		return
 	}

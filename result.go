@@ -31,16 +31,17 @@ package hxcmp
 // communicate rendering intent to the framework. Errors are still errors
 // (via Err()), not control flow.
 type Result[P any] struct {
-	props       P
-	err         error
-	redirect    string
-	flashes     []Flash
-	trigger     string
-	triggerData map[string]any
-	callback    *Callback // Deprecated: use Trigger with data instead
-	headers     map[string]string
-	status      int
-	skip        bool
+	props              P
+	err                error
+	redirect           string
+	flashes            []Flash
+	trigger            string
+	triggerData        map[string]any
+	triggerAfterSettle string // Event fired after swap settles (for URL sync)
+	callback           *Callback // Deprecated: use Trigger with data instead
+	headers            map[string]string
+	status             int
+	skip               bool
 }
 
 // OK creates a success result that will auto-render with the given props.
@@ -148,6 +149,36 @@ func (r Result[P]) Trigger(event string, data ...map[string]any) Result[P] {
 	return r
 }
 
+// PushURL updates the browser URL via HX-Push-Url header.
+//
+// Use this when an action changes shared URL state. Combined with TriggerURLSync,
+// this enables React-like reactivity where URL is the shared state:
+//
+//	return hxcmp.OK(props).
+//	    PushURL("/todos?status=pending").
+//	    TriggerURLSync()
+//
+// Components using SyncURL() will automatically refresh and read the new URL params.
+func (r Result[P]) PushURL(url string) Result[P] {
+	return r.Header("HX-Push-Url", url)
+}
+
+// TriggerURLSync emits the "url:sync" event to refresh all URL-bound components.
+//
+// Components with SyncURL() listen for this event and re-render, reading their
+// state from the browser's current URL. Use after PushURL to notify components:
+//
+//	return hxcmp.OK(props).
+//	    PushURL("/todos?status=pending").
+//	    TriggerURLSync()
+//
+// This uses HX-Trigger-After-Settle to ensure the URL is updated before
+// the event fires, preventing race conditions where components read stale URLs.
+func (r Result[P]) TriggerURLSync() Result[P] {
+	r.triggerAfterSettle = "url:sync"
+	return r
+}
+
 // Header sets a custom response header.
 //
 // Use for cache control, rate limiting metadata, or other HTTP semantics:
@@ -200,6 +231,11 @@ func (r Result[P]) GetTrigger() string {
 // GetTriggerData returns the trigger event data.
 func (r Result[P]) GetTriggerData() map[string]any {
 	return r.triggerData
+}
+
+// GetTriggerAfterSettle returns the after-settle trigger event name.
+func (r Result[P]) GetTriggerAfterSettle() string {
+	return r.triggerAfterSettle
 }
 
 // GetCallback returns the callback.

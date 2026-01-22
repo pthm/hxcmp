@@ -41,7 +41,7 @@ func (c *Sidebar) Render(ctx context.Context, props SidebarProps) templ.Componen
 	return sidebarTemplate(c, props)
 }
 
-// handleFilter applies filters and emits filter:changed event.
+// handleFilter applies filters and updates URL state.
 func (c *Sidebar) handleFilter(ctx context.Context, props SidebarProps, r *http.Request) hxcmp.Result[SidebarProps] {
 	if err := r.ParseForm(); err != nil {
 		return hxcmp.Err(props, err)
@@ -50,18 +50,25 @@ func (c *Sidebar) handleFilter(ctx context.Context, props SidebarProps, r *http.
 	// Update props with selected filter
 	props.CurrentStatus = r.FormValue("status")
 
-	// Emit event so listeners (e.g., TodoList) can refresh with new filter
-	return hxcmp.OK(props).Trigger("filter:changed", map[string]any{
-		"status": props.CurrentStatus,
-	})
+	// Build URL with new filter state (app root is /)
+	url := "/"
+	if props.CurrentStatus != "" {
+		url += "?status=" + props.CurrentStatus
+	}
+
+	// Push URL and trigger sync so URL-bound components refresh
+	return hxcmp.OK(props).
+		PushURL(url).
+		TriggerURLSync()
 }
 
 // handleClear clears all filters.
 func (c *Sidebar) handleClear(ctx context.Context, props SidebarProps, r *http.Request) hxcmp.Result[SidebarProps] {
 	props.CurrentStatus = ""
 
-	// Emit event with empty status to clear the filter
+	// Push clean URL and trigger sync
 	return hxcmp.OK(props).
-		Trigger("filter:changed", map[string]any{"status": ""}).
+		PushURL("/").
+		TriggerURLSync().
 		Flash(hxcmp.FlashInfo, "Filters cleared")
 }

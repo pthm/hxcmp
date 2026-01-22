@@ -54,13 +54,15 @@ func (c *TodoList) Render(ctx context.Context, props TodoListProps) templ.Compon
 	return todoListTemplate(props)
 }
 
-// handleRefresh re-renders the list (used for callbacks).
+// handleRefresh re-renders the list with current URL state.
 func (c *TodoList) handleRefresh(ctx context.Context, props TodoListProps, r *http.Request) hxcmp.Result[TodoListProps] {
-	// Read filter status from query params (passed via callback vals)
-	if status := r.URL.Query().Get("status"); status != "" {
-		props.FilterStatus = status
+	// SyncURL injects "status" from browser URL into request params
+	props.FilterStatus = r.URL.Query().Get("status")
+
+	// Re-hydrate with updated filter to fetch correct todos
+	if err := c.Hydrate(r.Context(), &props); err != nil {
+		return hxcmp.Err(props, err)
 	}
-	// Hydrate runs automatically before this handler, but we've updated
-	// FilterStatus so return OK to trigger re-render with new filter
+
 	return hxcmp.OK(props)
 }

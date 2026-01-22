@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/a-h/templ"
@@ -50,7 +51,8 @@ type Action struct {
 	confirm      string
 	pushURL      bool
 	vals         map[string]any
-	encodedProps string // Encoded props to send separately for POST/PUT/DELETE
+	encodedProps string   // Encoded props to send separately for POST/PUT/DELETE
+	syncURLParams []string // URL params to sync from browser URL on event-triggered requests
 }
 
 // NewAction creates a new action with URL and method.
@@ -281,6 +283,33 @@ func (a *Action) OnRevealed() *Action {
 	return a
 }
 
+// SyncURL binds component state to URL query parameters.
+//
+// When this action is triggered (typically via url:sync event), the JS
+// extension reads the specified params from the browser's current URL
+// and includes them in the request. This enables React-like reactivity
+// where multiple components can share state via URL.
+//
+// The action automatically listens for the "url:sync" event from body.
+//
+// Usage:
+//
+//	// TodoList refreshes when URL changes, reading "status" from URL
+//	c.Refresh(props).Target("#todo-list").SyncURL("status", "sort")
+//
+//	// Sidebar changes URL and triggers sync
+//	c.Filter(props).Target(".filters")  // handler calls TriggerURLSync()
+//
+// With no params, syncs all URL query parameters:
+//
+//	c.Refresh(props).SyncURL()  // sync everything
+func (a *Action) SyncURL(params ...string) *Action {
+	a.syncURLParams = params
+	// Add url:sync trigger if not already present
+	a.OnEvent("url:sync")
+	return a
+}
+
 // ═══════════════════════════════════════════════════════════════
 // UX Enhancements
 // ═══════════════════════════════════════════════════════════════
@@ -378,6 +407,16 @@ func (a *Action) Attrs() templ.Attributes {
 	}
 	if a.pushURL {
 		attrs["hx-push-url"] = "true"
+	}
+
+	// URL sync - tells JS extension which params to read from browser URL
+	if a.syncURLParams != nil {
+		if len(a.syncURLParams) == 0 {
+			// Empty slice means sync all URL params
+			attrs["data-sync-url"] = "*"
+		} else {
+			attrs["data-sync-url"] = strings.Join(a.syncURLParams, ",")
+		}
 	}
 
 	// Build hx-vals - merge user vals with encoded props for non-GET methods

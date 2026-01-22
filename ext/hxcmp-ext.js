@@ -10,6 +10,33 @@
         // When a component emits Trigger("event", data), listeners receive
         // the data as request parameters automatically.
         document.body.addEventListener('htmx:configRequest', function(evt) {
+            var elt = evt.detail.elt;
+
+            // URL Sync: Read specified params from browser URL and inject into request.
+            // Used for React-like shared state via URL query params.
+            // data-sync-url="status,sort" syncs specific params
+            // data-sync-url="*" syncs all URL params
+            var syncUrl = elt.getAttribute('data-sync-url');
+            if (syncUrl) {
+                var urlParams = new URLSearchParams(window.location.search);
+                if (syncUrl === '*') {
+                    // Sync all URL params
+                    urlParams.forEach(function(value, key) {
+                        evt.detail.parameters[key] = value;
+                    });
+                } else {
+                    // Sync only specified params
+                    var paramNames = syncUrl.split(',');
+                    for (var i = 0; i < paramNames.length; i++) {
+                        var name = paramNames[i].trim();
+                        if (urlParams.has(name)) {
+                            evt.detail.parameters[name] = urlParams.get(name);
+                        }
+                    }
+                }
+            }
+
+            // Event data injection (existing behavior)
             var triggeringEvent = evt.detail.triggeringEvent;
             if (!triggeringEvent || !triggeringEvent.detail) {
                 return;
@@ -57,6 +84,12 @@
                 target: data.target || 'body',
                 swap: data.swap || 'outerHTML'
             });
+        });
+
+        // URL Sync: Trigger url:sync on browser back/forward navigation.
+        // This enables components with SyncURL() to re-render when user navigates history.
+        window.addEventListener('popstate', function() {
+            htmx.trigger(document.body, 'url:sync');
         });
 
         // Auto-dismiss toasts after their configured delay.

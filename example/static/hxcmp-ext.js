@@ -1,16 +1,64 @@
 // hxcmp-ext.js
-// HTMX extension for hxcmp callbacks and toast auto-dismiss.
+// HTMX extension for hxcmp event data injection and toast auto-dismiss.
 // Load after htmx.js: <script src="/static/hxcmp-ext.js"></script>
 
 (function() {
     'use strict';
 
     function init() {
-        // Listen for hxcmp:callback events triggered via HX-Trigger header.
+        // Inject event data into HTMX requests triggered by custom events.
+        // When a component emits Trigger("event", data), listeners receive
+        // the data as request parameters automatically.
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            var elt = evt.detail.elt;
+
+            // URL Sync: Read specified params from browser URL and inject into request.
+            // Used for React-like shared state via URL query params.
+            // data-sync-url="status,sort" syncs specific params
+            // data-sync-url="*" syncs all URL params
+            var syncUrl = elt.getAttribute('data-sync-url');
+            if (syncUrl) {
+                var urlParams = new URLSearchParams(window.location.search);
+                if (syncUrl === '*') {
+                    // Sync all URL params
+                    urlParams.forEach(function(value, key) {
+                        evt.detail.parameters[key] = value;
+                    });
+                } else {
+                    // Sync only specified params
+                    var paramNames = syncUrl.split(',');
+                    for (var i = 0; i < paramNames.length; i++) {
+                        var name = paramNames[i].trim();
+                        if (urlParams.has(name)) {
+                            evt.detail.parameters[name] = urlParams.get(name);
+                        }
+                    }
+                }
+            }
+
+            // Event data injection (existing behavior)
+            var triggeringEvent = evt.detail.triggeringEvent;
+            if (!triggeringEvent || !triggeringEvent.detail) {
+                return;
+            }
+
+            var data = triggeringEvent.detail;
+            if (typeof data !== 'object' || data === null) {
+                return;
+            }
+
+            // Inject each key from the event detail into request parameters
+            for (var key in data) {
+                if (data.hasOwnProperty(key)) {
+                    evt.detail.parameters[key] = data[key];
+                }
+            }
+        });
+
+        // [Deprecated] Listen for hxcmp:callback events.
+        // Callbacks are deprecated in favor of Trigger with data.
         document.body.addEventListener('hxcmp:callback', function(evt) {
             var detail = evt.detail || {};
-
-            // Support both direct detail and nested structure from HX-Trigger.
             var data = detail.value || detail;
 
             if (!data.url) {
@@ -18,7 +66,6 @@
                 return;
             }
 
-            // Build URL with vals as query params if present.
             var url = data.url;
             if (data.vals && typeof data.vals === 'object') {
                 var params = new URLSearchParams();
@@ -33,11 +80,16 @@
                 }
             }
 
-            // Issue the callback request using HTMX.
             htmx.ajax('GET', url, {
                 target: data.target || 'body',
                 swap: data.swap || 'outerHTML'
             });
+        });
+
+        // URL Sync: Trigger url:sync on browser back/forward navigation.
+        // This enables components with SyncURL() to re-render when user navigates history.
+        window.addEventListener('popstate', function() {
+            htmx.trigger(document.body, 'url:sync');
         });
 
         // Auto-dismiss toasts after their configured delay.
@@ -49,7 +101,7 @@
                     toast.classList.add('toast-fade-out');
                     setTimeout(function() {
                         toast.remove();
-                    }, 300); // Match CSS animation duration.
+                    }, 300);
                 }, delay);
             });
         });
@@ -57,12 +109,9 @@
         console.log('hxcmp extension loaded');
     }
 
-    // Wait for DOM to be ready before attaching event listeners.
-    // This ensures document.body exists when the script is in <head>.
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
-        // DOM already loaded (script is deferred or at end of body)
         init();
     }
 })();

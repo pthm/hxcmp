@@ -56,7 +56,9 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	hxcmp.Render(w, r, Layout())
+	// Read filter state from URL - this is the source of truth
+	status := r.URL.Query().Get("status")
+	hxcmp.Render(w, r, Layout(status))
 }
 
 func handleTaskDetail(w http.ResponseWriter, r *http.Request) {

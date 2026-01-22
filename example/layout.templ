@@ -7,7 +7,8 @@ import (
 
 // Layout renders the main 2-column page layout.
 // Components accessed via generated getter functions (e.g., components.SidebarCmp()).
-templ Layout() {
+// status parameter comes from URL query params - this is the shared filter state.
+templ Layout(status string) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
@@ -26,14 +27,18 @@ templ Layout() {
 				</header>
 				<div class="layout">
 					<aside class="sidebar">
-						@components.SidebarCmp().Render(ctx, components.SidebarProps{})
+						@components.SidebarCmp().Render(ctx, components.SidebarProps{
+							CurrentStatus: status,
+						})
 					</aside>
 					<main class="main">
 						<div class="add-section">
 							@components.AddTodoCmp().Render(ctx, components.AddTodoProps{})
 						</div>
 						<div class="todo-list-section">
-							@components.TodoListCmp().RenderHydrated(ctx, components.TodoListProps{})
+							@components.TodoListCmp().RenderHydrated(ctx, components.TodoListProps{
+								FilterStatus: status,
+							})
 						</div>
 						<div class="stats-section">
 							@components.StatsCmp().Lazy(components.StatsProps{}, statsPlaceholder())
