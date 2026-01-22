@@ -18,19 +18,14 @@ func main() {
 	// Create store
 	store := NewStore()
 
-	// Create registry with encryption key (in production, use a real secret)
-	key := []byte("example-key-must-be-32-bytes!!")
-	reg := hxcmp.NewRegistry(key)
-	hxcmp.SetDefault(reg)
-
-	// Initialize all components
-	components.Init(store, reg)
-
 	// Create router
 	mux := http.NewServeMux()
 
-	// Component routes
-	mux.Handle("/_c/", reg.Handler())
+	// Mount hxcmp (in production, use hxcmp.WithKey(key) for session continuity)
+	reg := hxcmp.Mount(mux)
+
+	// Initialize all components
+	components.Init(store, reg)
 
 	// Page routes
 	mux.HandleFunc("/", handleIndex)

@@ -2,6 +2,7 @@ package hxcmp
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io"
 	"net/http"
@@ -600,4 +601,80 @@ func (reg *Registry) Handler() http.Handler {
 
 		reg.mux.ServeHTTP(w, r)
 	})
+}
+
+// MountOption configures the Mount function.
+type MountOption func(*mountOptions)
+
+type mountOptions struct {
+	key     []byte
+	path    string
+	onError func(http.ResponseWriter, *http.Request, error)
+}
+
+// WithKey sets the encryption key for the registry.
+// The key should be at least 32 bytes of cryptographically random data.
+// If not provided, a random key is generated (suitable for development only).
+func WithKey(key []byte) MountOption {
+	return func(o *mountOptions) {
+		o.key = key
+	}
+}
+
+// WithPath sets the URL path prefix for component routes.
+// Defaults to "/_c/".
+func WithPath(path string) MountOption {
+	return func(o *mountOptions) {
+		o.path = path
+	}
+}
+
+// WithOnError sets a custom error handler for the registry.
+func WithOnError(handler func(http.ResponseWriter, *http.Request, error)) MountOption {
+	return func(o *mountOptions) {
+		o.onError = handler
+	}
+}
+
+// Mount creates a registry, sets it as the default, and mounts the handler.
+//
+// This is the simplest way to initialize hxcmp:
+//
+//	// Development (random key, sessions break on restart)
+//	hxcmp.Mount(mux)
+//
+//	// Production (stable key for session continuity)
+//	hxcmp.Mount(mux, hxcmp.WithKey(key))
+//
+//	// Custom path
+//	hxcmp.Mount(mux, hxcmp.WithPath("/api/components/"))
+//
+// Mount returns the created registry for further configuration (e.g., adding
+// components). The registry is also set as the default for MustGet.
+func Mount(mux *http.ServeMux, opts ...MountOption) *Registry {
+	options := &mountOptions{
+		path: "/_c/",
+	}
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	// Generate random key if not provided
+	key := options.key
+	if key == nil {
+		key = make([]byte, 32)
+		if _, err := rand.Read(key); err != nil {
+			panic(fmt.Sprintf("hxcmp: failed to generate random key: %v", err))
+		}
+	}
+
+	reg := NewRegistry(key)
+	if options.onError != nil {
+		reg.OnError = options.onError
+	}
+
+	SetDefault(reg)
+	mux.Handle(options.path, reg.Handler())
+
+	return reg
 }
