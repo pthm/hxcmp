@@ -13,6 +13,13 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
+// Sentinel errors for encoding operations.
+var (
+	ErrInvalidFormat    = errors.New("hxcmp: invalid parameter format")
+	ErrSignatureInvalid = errors.New("hxcmp: signature verification failed")
+	ErrDecryptFailed    = errors.New("hxcmp: parameter decryption failed")
+)
+
 // Encoder handles encoding and decoding of component props.
 // It supports two modes:
 //   - Signed (default): Base64 + HMAC signature - visible but tamper-proof
@@ -125,17 +132,17 @@ func (e *Encoder) sign(data []byte) (string, error) {
 func (e *Encoder) verify(encoded string) ([]byte, error) {
 	parts := strings.SplitN(encoded, ".", 2)
 	if len(parts) != 2 {
-		return nil, errors.New("invalid format: missing signature")
+		return nil, ErrInvalidFormat
 	}
 
 	data, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil {
-		return nil, err
+		return nil, ErrDecryptFailed
 	}
 
 	sig, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		return nil, err
+		return nil, ErrDecryptFailed
 	}
 
 	mac := hmac.New(sha256.New, e.key)
@@ -143,7 +150,7 @@ func (e *Encoder) verify(encoded string) ([]byte, error) {
 	expected := mac.Sum(nil)[:16]
 
 	if !hmac.Equal(sig, expected) {
-		return nil, errors.New("signature verification failed")
+		return nil, ErrSignatureInvalid
 	}
 
 	return data, nil
@@ -164,15 +171,19 @@ func (e *Encoder) encrypt(data []byte) (string, error) {
 func (e *Encoder) decrypt(encoded string) ([]byte, error) {
 	ciphertext, err := base64.RawURLEncoding.DecodeString(encoded)
 	if err != nil {
-		return nil, err
+		return nil, ErrDecryptFailed
 	}
 
 	if len(ciphertext) < e.gcm.NonceSize() {
-		return nil, errors.New("ciphertext too short")
+		return nil, ErrDecryptFailed
 	}
 
 	nonce := ciphertext[:e.gcm.NonceSize()]
 	ciphertext = ciphertext[e.gcm.NonceSize():]
 
-	return e.gcm.Open(nil, nonce, ciphertext, nil)
+	plaintext, err := e.gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, ErrDecryptFailed
+	}
+	return plaintext, nil
 }

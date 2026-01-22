@@ -9,20 +9,6 @@ import (
 	"github.com/a-h/templ"
 )
 
-// SwapMode represents HTMX swap modes.
-type SwapMode string
-
-const (
-	SwapOuter       SwapMode = "outerHTML"   // Replace entire element
-	SwapInner       SwapMode = "innerHTML"   // Replace contents
-	SwapBeforeEnd   SwapMode = "beforeend"   // Append to contents (inside, at end)
-	SwapAfterEnd    SwapMode = "afterend"    // Insert after element (outside, after)
-	SwapBeforeBegin SwapMode = "beforebegin" // Insert before element (outside, before)
-	SwapAfterBegin  SwapMode = "afterbegin"  // Prepend to contents (inside, at start)
-	SwapDelete      SwapMode = "delete"      // Delete element
-	SwapNone        SwapMode = "none"        // No swap
-)
-
 // ActionBuilder configures action registration (e.g., HTTP method).
 type ActionBuilder struct {
 	action *actionDef

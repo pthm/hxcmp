@@ -1,18 +1,10 @@
 package hxcmp
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
 	"sync"
-)
-
-// Sentinel errors for error handling.
-var (
-	ErrNotFound        = errors.New("resource not found")
-	ErrHydrationFailed = errors.New("hydration failed")
-	ErrDecryptFailed   = errors.New("parameter decryption failed")
 )
 
 // HXComponent is the interface that generated code implements.
@@ -49,8 +41,12 @@ func NewRegistry(encryptionKey []byte) *Registry {
 
 	// Default error handler
 	reg.OnError = func(w http.ResponseWriter, r *http.Request, err error) {
-		if errors.Is(err, ErrNotFound) {
+		if IsNotFound(err) {
 			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+		if IsDecryptionError(err) {
+			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 		http.Error(w, "Internal error", http.StatusInternalServerError)

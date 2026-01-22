@@ -96,6 +96,11 @@ func (c *Component[P]) SetEncoder(enc *Encoder) {
 	c.encoder = enc
 }
 
+// Encoder returns the encoder for this component.
+func (c *Component[P]) Encoder() *Encoder {
+	return c.encoder
+}
+
 // SetParent sets the parent component (the concrete type embedding this).
 func (c *Component[P]) SetParent(parent any) {
 	c.parent = parent
