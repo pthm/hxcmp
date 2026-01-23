@@ -70,31 +70,32 @@ func TestMountSetsDefault(t *testing.T) {
 	hxcmp.MustGet[*testing.T]()
 }
 
-func TestCSRFProtection(t *testing.T) {
+func TestPOSTNotForbiddenWithoutHXRequest(t *testing.T) {
 	e := echo.New()
 	Mount(e)
 
-	// POST without HX-Request header should be forbidden
-	req := httptest.NewRequest(http.MethodPost, "/_c/test/action", nil)
+	// POST without HX-Request header should NOT be forbidden
+	// (CSRF protection is the app's responsibility, not hxcmp's)
+	req := httptest.NewRequest(http.MethodPost, "/_hxc/test/action", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusForbidden {
-		t.Errorf("expected 403 for POST without HX-Request, got %d", rec.Code)
+	if rec.Code == http.StatusForbidden {
+		t.Error("POST without HX-Request should not be forbidden (CSRF is app-level)")
 	}
 }
 
-func TestGETAllowed(t *testing.T) {
+func TestGETRouted(t *testing.T) {
 	e := echo.New()
 	Mount(e)
 
-	// GET requests don't need HX-Request header
-	req := httptest.NewRequest(http.MethodGet, "/_c/test", nil)
+	// GET requests are routed to the mux (404 since no component registered)
+	req := httptest.NewRequest(http.MethodGet, "/_hxc/test", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
-	// Should not be 403 (will be 404 since no component is registered, but not forbidden)
+	// Should not be 403 — just 404 since no component is registered
 	if rec.Code == http.StatusForbidden {
-		t.Error("GET request should not require HX-Request header")
+		t.Error("GET request should not be forbidden")
 	}
 }

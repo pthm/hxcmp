@@ -82,7 +82,6 @@ func Provide[T any](reg *Registry, comp T) T {
 //
 // The registry provides centralized component management with:
 //   - Prefix collision detection at registration time (not runtime)
-//   - CSRF protection via HX-Request header validation
 //   - Shared encryption key for all components
 //   - Customizable error handling via OnError callback
 //
@@ -91,7 +90,7 @@ func Provide[T any](reg *Registry, comp T) T {
 //	reg := hxcmp.NewRegistry(encryptionKey)
 //	reg.OnError = customErrorHandler
 //	reg.Add(fileViewer, fileBrowser, commitList)
-//	http.Handle("/_c/", reg.Handler())
+//	http.Handle("/_hxc/", reg.Handler())
 //
 // Components must implement Hydrater[P] and Renderer[P] interfaces.
 // The registry verifies interfaces at registration time, panicking if
@@ -581,26 +580,15 @@ func (reg *Registry) processReflectResult(comp any, result reflect.Value, props 
 
 // Handler returns the HTTP handler for component routes.
 //
-// Mount this at "/_c/" in your application:
+// Mount this at "/_hxc/" in your application:
 //
-//	http.Handle("/_c/", reg.Handler())
+//	http.Handle("/_hxc/", reg.Handler())
 //
-// The handler provides automatic CSRF protection - mutating methods
-// (POST/PUT/DELETE/PATCH) require the HX-Request: true header that
-// HTMX sends. Combined with SameSite cookies, this prevents cross-origin
-// attacks without additional tokens.
+// CSRF protection is NOT handled by hxcmp. Applications should apply their
+// own CSRF middleware (e.g., Echo CSRF middleware) to the route group that
+// mounts this handler.
 func (reg *Registry) Handler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// CSRF protection: mutating methods require HX-Request header
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			if r.Header.Get("HX-Request") != "true" {
-				http.Error(w, "Forbidden: HTMX request required", http.StatusForbidden)
-				return
-			}
-		}
-
-		reg.mux.ServeHTTP(w, r)
-	})
+	return reg.mux
 }
 
 // MountOption configures the Mount function.
@@ -622,7 +610,7 @@ func WithKey(key []byte) MountOption {
 }
 
 // WithPath sets the URL path prefix for component routes.
-// Defaults to "/_c/".
+// Defaults to "/_hxc/".
 func WithPath(path string) MountOption {
 	return func(o *mountOptions) {
 		o.path = path
@@ -653,7 +641,7 @@ func WithOnError(handler func(http.ResponseWriter, *http.Request, error)) MountO
 // components). The registry is also set as the default for MustGet.
 func Mount(mux *http.ServeMux, opts ...MountOption) *Registry {
 	options := &mountOptions{
-		path: "/_c/",
+		path: "/_hxc/",
 	}
 	for _, opt := range opts {
 		opt(options)

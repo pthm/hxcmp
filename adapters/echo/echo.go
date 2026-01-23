@@ -40,7 +40,7 @@ func WithKey(key []byte) Option {
 }
 
 // WithPath sets the URL path prefix for component routes.
-// Defaults to "/_c/".
+// Defaults to "/_hxc/".
 func WithPath(path string) Option {
 	return func(o *options) {
 		o.path = path
@@ -79,7 +79,7 @@ type mountedRegistry struct {
 }
 
 func newRegistry(opts []Option) *mountedRegistry {
-	o := &options{path: "/_c/"}
+	o := &options{path: "/_hxc/"}
 	for _, opt := range opts {
 		opt(o)
 	}

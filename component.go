@@ -71,7 +71,7 @@ type Component[P any] struct {
 // (file:line where New is called), ensuring different instances get unique
 // routes even with the same name.
 func New[P any](name string) *Component[P] {
-	prefix := "/_c/" + name + "-" + componentHash(name, 1)
+	prefix := "/_hxc/" + name + "-" + componentHash(name, 1)
 	return &Component[P]{
 		name:    name,
 		prefix:  prefix,

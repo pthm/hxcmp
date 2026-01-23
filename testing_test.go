@@ -160,14 +160,14 @@ func TestTestRenderWithContext(t *testing.T) {
 
 func TestTestAction_GET(t *testing.T) {
 	comp := &mockHXComponent{
-		prefix: "/_c/test",
+		prefix: "/_hxc/test",
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`<div>GET Response</div>`))
 		},
 	}
 
-	result, err := TestAction(comp, "/_c/test/action", http.MethodGet, nil)
+	result, err := TestAction(comp, "/_hxc/test/action", http.MethodGet, nil)
 	if err != nil {
 		t.Fatalf("TestAction() error = %v", err)
 	}
@@ -184,7 +184,7 @@ func TestTestAction_GET(t *testing.T) {
 func TestTestAction_POST_WithFormData(t *testing.T) {
 	var receivedName string
 	comp := &mockHXComponent{
-		prefix: "/_c/test",
+		prefix: "/_hxc/test",
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			r.ParseForm()
 			receivedName = r.FormValue("name")
@@ -194,7 +194,7 @@ func TestTestAction_POST_WithFormData(t *testing.T) {
 	}
 
 	formData := map[string]string{"name": "Alice", "count": "5"}
-	result, err := TestAction(comp, "/_c/test/submit", http.MethodPost, formData)
+	result, err := TestAction(comp, "/_hxc/test/submit", http.MethodPost, formData)
 	if err != nil {
 		t.Fatalf("TestAction() error = %v", err)
 	}
@@ -214,7 +214,7 @@ func TestTestAction_POST_WithFormData(t *testing.T) {
 
 func TestTestAction_ParsesHTMXHeaders(t *testing.T) {
 	comp := &mockHXComponent{
-		prefix: "/_c/test",
+		prefix: "/_hxc/test",
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("HX-Trigger", "item-saved, list-updated")
 			w.Header().Set("HX-Redirect", "/dashboard")
@@ -222,7 +222,7 @@ func TestTestAction_ParsesHTMXHeaders(t *testing.T) {
 		},
 	}
 
-	result, err := TestAction(comp, "/_c/test/save", http.MethodPost, nil)
+	result, err := TestAction(comp, "/_hxc/test/save", http.MethodPost, nil)
 	if err != nil {
 		t.Fatalf("TestAction() error = %v", err)
 	}
@@ -251,14 +251,14 @@ func TestTestAction_ParsesHTMXHeaders(t *testing.T) {
 func TestTestAction_SetsHXRequestHeader(t *testing.T) {
 	var hxRequest string
 	comp := &mockHXComponent{
-		prefix: "/_c/test",
+		prefix: "/_hxc/test",
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			hxRequest = r.Header.Get("HX-Request")
 			w.WriteHeader(http.StatusOK)
 		},
 	}
 
-	_, err := TestAction(comp, "/_c/test/action", http.MethodPost, nil)
+	_, err := TestAction(comp, "/_hxc/test/action", http.MethodPost, nil)
 	if err != nil {
 		t.Fatalf("TestAction() error = %v", err)
 	}
@@ -270,13 +270,13 @@ func TestTestAction_SetsHXRequestHeader(t *testing.T) {
 
 func TestTestGet(t *testing.T) {
 	comp := &mockHXComponent{
-		prefix: "/_c/test",
+		prefix: "/_hxc/test",
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		},
 	}
 
-	_, err := TestGet(comp, "/_c/test/")
+	_, err := TestGet(comp, "/_hxc/test/")
 	if err != nil {
 		t.Fatalf("TestGet() error = %v", err)
 	}
@@ -288,13 +288,13 @@ func TestTestGet(t *testing.T) {
 
 func TestTestPost(t *testing.T) {
 	comp := &mockHXComponent{
-		prefix: "/_c/test",
+		prefix: "/_hxc/test",
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		},
 	}
 
-	_, err := TestPost(comp, "/_c/test/submit", map[string]string{"key": "value"})
+	_, err := TestPost(comp, "/_hxc/test/submit", map[string]string{"key": "value"})
 	if err != nil {
 		t.Fatalf("TestPost() error = %v", err)
 	}
@@ -575,7 +575,7 @@ func TestTestRequestBuilder(t *testing.T) {
 	var capturedHeader string
 
 	comp := &mockHXComponent{
-		prefix: "/_c/test",
+		prefix: "/_hxc/test",
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			capturedMethod = r.Method
 			capturedPath = r.URL.Path
@@ -587,7 +587,7 @@ func TestTestRequestBuilder(t *testing.T) {
 		},
 	}
 
-	result, err := NewTestRequest(http.MethodPost, "/_c/test/create").
+	result, err := NewTestRequest(http.MethodPost, "/_hxc/test/create").
 		WithFormData("key", "value").
 		WithHeader("X-Custom", "custom-value").
 		Execute(comp)
@@ -600,8 +600,8 @@ func TestTestRequestBuilder(t *testing.T) {
 		t.Errorf("method = %s, want POST", capturedMethod)
 	}
 
-	if capturedPath != "/_c/test/create" {
-		t.Errorf("path = %s, want /_c/test/create", capturedPath)
+	if capturedPath != "/_hxc/test/create" {
+		t.Errorf("path = %s, want /_hxc/test/create", capturedPath)
 	}
 
 	if capturedFormValue != "value" {
@@ -625,14 +625,14 @@ func TestTestRequestBuilder_WithContext(t *testing.T) {
 	var capturedValue any
 
 	comp := &mockHXComponent{
-		prefix: "/_c/test",
+		prefix: "/_hxc/test",
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			capturedValue = r.Context().Value(key)
 			w.WriteHeader(http.StatusOK)
 		},
 	}
 
-	_, err := NewTestRequest(http.MethodGet, "/_c/test/").
+	_, err := NewTestRequest(http.MethodGet, "/_hxc/test/").
 		WithContext(ctx).
 		Execute(comp)
 
@@ -649,7 +649,7 @@ func TestTestRequestBuilder_WithFormValues(t *testing.T) {
 	var capturedValues map[string]string
 
 	comp := &mockHXComponent{
-		prefix: "/_c/test",
+		prefix: "/_hxc/test",
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			r.ParseForm()
 			capturedValues = make(map[string]string)
@@ -660,7 +660,7 @@ func TestTestRequestBuilder_WithFormValues(t *testing.T) {
 		},
 	}
 
-	_, err := NewTestRequest(http.MethodPost, "/_c/test/submit").
+	_, err := NewTestRequest(http.MethodPost, "/_hxc/test/submit").
 		WithFormValues(map[string]string{
 			"name":  "Alice",
 			"email": "alice@example.com",
@@ -731,7 +731,7 @@ func TestMockHydrater_Error(t *testing.T) {
 func TestHeadersBeforeWriteHeader(t *testing.T) {
 	// Test that custom headers are present when a status code is set
 	comp := &mockHXComponent{
-		prefix: "/_c/test",
+		prefix: "/_hxc/test",
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			// Simulate the correct behavior: set headers BEFORE WriteHeader
 			w.Header().Set("X-Custom-Header", "test-value")
@@ -741,7 +741,7 @@ func TestHeadersBeforeWriteHeader(t *testing.T) {
 		},
 	}
 
-	result, err := TestAction(comp, "/_c/test/create", http.MethodPost, nil)
+	result, err := TestAction(comp, "/_hxc/test/create", http.MethodPost, nil)
 	if err != nil {
 		t.Fatalf("TestAction() error = %v", err)
 	}
@@ -766,7 +766,7 @@ func TestHeadersBeforeWriteHeader(t *testing.T) {
 func TestHeadersDroppedAfterWriteHeader(t *testing.T) {
 	// This test demonstrates the buggy pattern: setting headers after WriteHeader
 	comp := &mockHXComponent{
-		prefix: "/_c/test",
+		prefix: "/_hxc/test",
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			// BUG PATTERN: WriteHeader called BEFORE headers are set
 			w.WriteHeader(http.StatusCreated)
@@ -776,7 +776,7 @@ func TestHeadersDroppedAfterWriteHeader(t *testing.T) {
 		},
 	}
 
-	result, err := TestAction(comp, "/_c/test/create", http.MethodPost, nil)
+	result, err := TestAction(comp, "/_hxc/test/create", http.MethodPost, nil)
 	if err != nil {
 		t.Fatalf("TestAction() error = %v", err)
 	}

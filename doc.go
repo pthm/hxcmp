@@ -48,9 +48,8 @@
 //   - Signed (default): HMAC-authenticated JSON, visible but tamper-proof
 //   - Encrypted: AES-GCM encrypted, opaque to clients (use .Sensitive())
 //
-// CSRF protection is automatic - mutating methods (POST/PUT/DELETE/PATCH)
-// require the HX-Request: true header that HTMX sends, preventing cross-origin
-// attacks without additional tokens.
+// CSRF protection is not handled by hxcmp. Applications should apply their
+// own CSRF middleware to the route group that mounts the component handler.
 //
 // # Component Communication
 //
@@ -76,7 +75,7 @@
 //
 //	reg := hxcmp.NewRegistry(encryptionKey)
 //	reg.Add(fileViewer, fileBrowser, commitList)
-//	http.Handle("/_c/", reg.Handler())
+//	http.Handle("/_hxc/", reg.Handler())
 //
 // The registry provides centralized error handling via OnError callback
 // and ensures components meet interface requirements at registration time,
