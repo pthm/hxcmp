@@ -34,7 +34,9 @@ templ addTodoTemplate(c *AddTodo, props AddTodoProps) {
 		<button
 			type="submit"
 			class="add-btn"
-			{ c.Add(props).Target(".add-todo-form").SwapOuter().Attrs()... }
+			{ c.WireAdd(props)... }
+			hx-target=".add-todo-form"
+			hx-swap="outerHTML"
 		>
 			Add Todo
 		</button>

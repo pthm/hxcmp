@@ -31,10 +31,13 @@
 //	c.Action("edit", c.handleEdit)
 //	c.Action("delete", c.handleDelete).Method(http.MethodDelete)
 //
-// Code generation produces typed action methods that provide compile-time
-// route verification:
+// Code generation produces typed Wire methods that return templ.Attributes
+// with the minimal HTMX attributes (hx-get/hx-post + hx-vals):
 //
-//	c.Edit(props).Target("#editor").Confirm("Save changes?").Attrs()
+//	<button { c.WireEdit(props)... } hx-target="#editor" hx-confirm="Save?">
+//
+// All other HTMX attributes (hx-target, hx-swap, hx-trigger, etc.) are
+// written directly in templates, keeping component code HTMX-native.
 //
 // Each component receives a unique URL prefix based on its name and source
 // location hash. The registry prevents prefix collisions at registration time.
@@ -58,16 +61,14 @@
 //	// Emitter sends event with data:
 //	return hxcmp.OK(props).Trigger("item:saved", map[string]any{"id": item.ID})
 //
-//	// Listener responds to event in template:
-//	c.Refresh(props).OnEvent("item:saved").Attrs()
+//	// Listener responds to event in template (raw HTMX):
+//	<div { c.WireRender(props)... } hx-trigger="item:saved from:body">
 //
 // 2. Flash messages: One-time notifications rendered as OOB swaps
 //
 //	return hxcmp.OK(props).Flash("success", "Saved!")
 //
 // Events decouple components - the emitter doesn't know who's listening.
-// The hxcmp JavaScript extension automatically injects event data into
-// listener requests as parameters.
 //
 // # Registration and Routing
 //
@@ -85,7 +86,7 @@
 //
 // Run 'hxcmp generate' to produce:
 //   - Fast encoder/decoder for Props (implements Encodable/Decodable)
-//   - Typed action methods (e.g., Edit, Delete, Raw)
+//   - Wire methods (e.g., WireEdit, WireDelete) returning templ.Attributes
 //   - HXServeHTTP dispatcher that routes requests to handlers
 //
 // Generated code eliminates reflection in the hot path and enables

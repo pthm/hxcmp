@@ -86,27 +86,6 @@ func TestResultFlash(t *testing.T) {
 	}
 }
 
-func TestResultCallback(t *testing.T) {
-	props := testResultProps{ID: 1}
-	cb := Callback{
-		URL:    "/parent/refresh",
-		Target: "#parent",
-		Swap:   "outerHTML",
-	}
-	r := OK(props).Callback(cb)
-
-	got := r.GetCallback()
-	if got == nil {
-		t.Fatal("GetCallback() = nil, want non-nil")
-	}
-	if got.URL != "/parent/refresh" {
-		t.Errorf("GetCallback().URL = %q, want %q", got.URL, "/parent/refresh")
-	}
-	if got.Target != "#parent" {
-		t.Errorf("GetCallback().Target = %q, want %q", got.Target, "#parent")
-	}
-}
-
 func TestResultTrigger(t *testing.T) {
 	props := testResultProps{ID: 1}
 	r := OK(props).Trigger("itemUpdated")
@@ -180,9 +159,6 @@ func TestResultDefaultValues(t *testing.T) {
 	}
 	if r.GetTrigger() != "" {
 		t.Error("Default trigger should be empty")
-	}
-	if r.GetCallback() != nil {
-		t.Error("Default callback should be nil")
 	}
 	if len(r.GetHeaders()) != 0 {
 		t.Error("Default headers should be empty")

@@ -98,61 +98,26 @@ func TargetID(r *http.Request) string {
 	return r.Header.Get("HX-Target")
 }
 
-// BuildTriggerHeader builds a properly formatted HX-Trigger header value by merging
-// event triggers and deprecated callbacks into a single header.
+// BuildTriggerHeader builds a properly formatted HX-Trigger header value.
 //
-// HTMX only allows one HX-Trigger header, so when both an event and callback are
-// present, they must be merged into a JSON object. The function optimizes for the
-// common case of simple events by returning a plain string when no data is needed.
-//
-// Supports three cases:
-//  1. Simple event name: "item-updated" -> "item-updated"
-//  2. Event with data: "filter:changed" + {"status": "active"} -> {"filter:changed": {"status": "active"}}
-//  3. Legacy callback (deprecated): merges callback into JSON object
-//
-// When data is provided with an event, HTMX fires the event with evt.detail
-// set to the data object. The hxcmp JS extension injects this data into
-// listener requests as parameters.
+// For simple event names with no data, returns the event name as-is.
+// When data is provided, returns a JSON object so HTMX fires the event
+// with evt.detail set to the data.
 //
 // Used by generated code in handleResult. User code should use Result[P].Trigger()
 // instead of calling this directly.
-func BuildTriggerHeader(cb *Callback, trigger string, triggerData map[string]any) string {
-	if cb == nil && trigger == "" {
+func BuildTriggerHeader(trigger string, triggerData map[string]any) string {
+	if trigger == "" {
 		return ""
 	}
 
-	// If only trigger with no data and no callback, return as simple event name
-	if cb == nil && triggerData == nil {
+	// Simple event name with no data
+	if triggerData == nil {
 		return trigger
 	}
 
-	// Need JSON format for data or callback
-	merged := make(map[string]any)
-
-	// Add trigger event with data
-	if trigger != "" {
-		if triggerData != nil {
-			merged[trigger] = triggerData
-		} else {
-			merged[trigger] = true
-		}
-	}
-
-	// Add callback event (deprecated path)
-	if cb != nil {
-		cbData := map[string]any{"url": cb.URL}
-		if cb.Target != "" {
-			cbData["target"] = cb.Target
-		}
-		if cb.Swap != "" {
-			cbData["swap"] = cb.Swap
-		}
-		if len(cb.Vals) > 0 {
-			cbData["vals"] = cb.Vals
-		}
-		merged["hxcmp:callback"] = cbData
-	}
-
+	// JSON format for event with data
+	merged := map[string]any{trigger: triggerData}
 	data, _ := json.Marshal(merged)
 	return string(data)
 }

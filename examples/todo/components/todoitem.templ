@@ -10,7 +10,10 @@ templ todoItemTemplate(c *TodoItem, props TodoItemProps) {
 			<div class="todo-checkbox">
 				<button
 					class="toggle-btn"
-					{ c.Toggle(props).TargetClosest(".todo-item-wrapper").Indicator(".toggle-btn").Attrs()... }
+					{ c.WireToggle(props)... }
+					hx-target="closest .todo-item-wrapper"
+					hx-swap="outerHTML"
+					hx-indicator=".toggle-btn"
 				>
 					if props.Todo.IsCompleted() {
 						<span class="check">&#10003;</span>
@@ -33,7 +36,11 @@ templ todoItemTemplate(c *TodoItem, props TodoItemProps) {
 			<div class="todo-actions">
 				<button
 					class="delete-btn"
-					{ c.Delete(props).TargetClosest(".todo-item-wrapper").SwapDelete().Confirm("Are you sure?").Indicator(".delete-btn").Attrs()... }
+					{ c.WireDelete(props)... }
+					hx-target="closest .todo-item-wrapper"
+					hx-swap="delete"
+					hx-confirm="Are you sure?"
+					hx-indicator=".delete-btn"
 				>
 					&times;
 				</button>

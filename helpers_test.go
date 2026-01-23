@@ -180,7 +180,6 @@ func TestRenderHelper(t *testing.T) {
 func TestBuildTriggerHeader(t *testing.T) {
 	tests := []struct {
 		name        string
-		callback    *Callback
 		trigger     string
 		triggerData map[string]any
 		expect      string
@@ -206,22 +205,11 @@ func TestBuildTriggerHeader(t *testing.T) {
 			triggerData: map[string]any{"id": "123", "name": "test"},
 			expect:      `{"item:saved":{"id":"123","name":"test"}}`,
 		},
-		{
-			name:     "deprecated callback only",
-			callback: &Callback{URL: "/refresh", Target: "#list", Swap: "outerHTML"},
-			expect:   `{"hxcmp:callback":{"swap":"outerHTML","target":"#list","url":"/refresh"}}`,
-		},
-		{
-			name:     "callback with trigger",
-			callback: &Callback{URL: "/refresh"},
-			trigger:  "item-updated",
-			expect:   `{"hxcmp:callback":{"url":"/refresh"},"item-updated":true}`,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := BuildTriggerHeader(tt.callback, tt.trigger, tt.triggerData)
+			result := BuildTriggerHeader(tt.trigger, tt.triggerData)
 			if result != tt.expect {
 				t.Errorf("BuildTriggerHeader() = %q, want %q", result, tt.expect)
 			}

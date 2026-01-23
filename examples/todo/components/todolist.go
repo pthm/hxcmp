@@ -56,7 +56,7 @@ func (c *TodoList) Render(ctx context.Context, props TodoListProps) templ.Compon
 
 // handleRefresh re-renders the list with current URL state.
 func (c *TodoList) handleRefresh(ctx context.Context, props TodoListProps, r *http.Request) hxcmp.Result[TodoListProps] {
-	// SyncURL injects "status" from browser URL into request params
+	// hx-vals in the template reads "status" from the browser URL and passes it here
 	props.FilterStatus = r.URL.Query().Get("status")
 
 	// Re-hydrate with updated filter to fetch correct todos

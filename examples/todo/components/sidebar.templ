@@ -13,7 +13,9 @@ templ sidebarTemplate(c *Sidebar, props SidebarProps) {
 							name="status"
 							value=""
 							checked?={ props.CurrentStatus == "" }
-							{ c.Filter(props).Target(".filters").SwapOuter().Attrs()... }
+							{ c.WireFilter(props)... }
+							hx-target=".filters"
+							hx-swap="outerHTML"
 						/>
 						<span>All</span>
 					</label>
@@ -23,7 +25,9 @@ templ sidebarTemplate(c *Sidebar, props SidebarProps) {
 							name="status"
 							value="pending"
 							checked?={ props.CurrentStatus == "pending" }
-							{ c.Filter(props).Target(".filters").SwapOuter().Attrs()... }
+							{ c.WireFilter(props)... }
+							hx-target=".filters"
+							hx-swap="outerHTML"
 						/>
 						<span>Pending</span>
 					</label>
@@ -33,7 +37,9 @@ templ sidebarTemplate(c *Sidebar, props SidebarProps) {
 							name="status"
 							value="completed"
 							checked?={ props.CurrentStatus == "completed" }
-							{ c.Filter(props).Target(".filters").SwapOuter().Attrs()... }
+							{ c.WireFilter(props)... }
+							hx-target=".filters"
+							hx-swap="outerHTML"
 						/>
 						<span>Completed</span>
 					</label>
@@ -42,7 +48,9 @@ templ sidebarTemplate(c *Sidebar, props SidebarProps) {
 			<button
 				type="button"
 				class="clear-btn"
-				{ c.Clear(props).Target(".filters").SwapOuter().Attrs()... }
+				{ c.WireClear(props)... }
+				hx-target=".filters"
+				hx-swap="outerHTML"
 			>
 				Clear Filters
 			</button>

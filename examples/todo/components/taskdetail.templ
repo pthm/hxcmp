@@ -17,7 +17,10 @@ templ taskDetailTemplate(c *TaskDetail, props TaskDetailProps) {
 				<div class="task-status">
 					<button
 						class={ "status-btn", templ.KV("completed", props.Todo.IsCompleted()) }
-						{ c.Toggle(props).Target(".task-detail").SwapOuter().Indicator(".status-btn").Attrs()... }
+						{ c.WireToggle(props)... }
+						hx-target=".task-detail"
+						hx-swap="outerHTML"
+						hx-indicator=".status-btn"
 					>
 						if props.Todo.IsCompleted() {
 							<span class="check">&#10003;</span> Completed
@@ -28,12 +31,13 @@ templ taskDetailTemplate(c *TaskDetail, props TaskDetailProps) {
 				</div>
 				<button
 					class="delete-btn-large"
-					{ c.Delete(props).Confirm("Are you sure you want to delete this todo?").Attrs()... }
+					{ c.WireDelete(props)... }
+					hx-confirm="Are you sure you want to delete this todo?"
 				>
 					Delete
 				</button>
 			</div>
-			// Inline editable title section - demonstrates HTMX swap patterns
+			// Inline editable title section
 			<div class="title-section" id="title-section">
 				if props.EditingTitle {
 					// Edit mode: show input with save/cancel
@@ -50,14 +54,18 @@ templ taskDetailTemplate(c *TaskDetail, props TaskDetailProps) {
 							<button
 								type="submit"
 								class="title-save-btn"
-								{ c.SaveTitle(props).Target(".task-detail").SwapOuter().Attrs()... }
+								{ c.WireSaveTitle(props)... }
+								hx-target=".task-detail"
+								hx-swap="outerHTML"
 							>
 								Save
 							</button>
 							<button
 								type="button"
 								class="title-cancel-btn"
-								{ c.CancelEdit(props).Target(".task-detail").SwapOuter().Attrs()... }
+								{ c.WireCancelEdit(props)... }
+								hx-target=".task-detail"
+								hx-swap="outerHTML"
 							>
 								Cancel
 							</button>
@@ -71,7 +79,9 @@ templ taskDetailTemplate(c *TaskDetail, props TaskDetailProps) {
 							type="button"
 							class="title-edit-btn"
 							title="Edit title"
-							{ c.EditTitle(props).Target(".task-detail").SwapOuter().Attrs()... }
+							{ c.WireEditTitle(props)... }
+							hx-target=".task-detail"
+							hx-swap="outerHTML"
 						>
 							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
@@ -111,7 +121,9 @@ templ taskDetailTemplate(c *TaskDetail, props TaskDetailProps) {
 					<button
 						type="submit"
 						class="save-btn"
-						{ c.Update(props).Target(".task-detail").SwapOuter().Attrs()... }
+						{ c.WireUpdate(props)... }
+						hx-target=".task-detail"
+						hx-swap="outerHTML"
 					>
 						Save Changes
 					</button>

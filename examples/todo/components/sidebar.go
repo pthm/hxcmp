@@ -56,19 +56,19 @@ func (c *Sidebar) handleFilter(ctx context.Context, props SidebarProps, r *http.
 		url += "?status=" + props.CurrentStatus
 	}
 
-	// Push URL and trigger sync so URL-bound components refresh
+	// Push URL and trigger event so other components can refresh
 	return hxcmp.OK(props).
 		PushURL(url).
-		TriggerURLSync()
+		Trigger("filter:changed")
 }
 
 // handleClear clears all filters.
 func (c *Sidebar) handleClear(ctx context.Context, props SidebarProps, r *http.Request) hxcmp.Result[SidebarProps] {
 	props.CurrentStatus = ""
 
-	// Push clean URL and trigger sync
+	// Push clean URL and trigger event
 	return hxcmp.OK(props).
 		PushURL("/").
-		TriggerURLSync().
+		Trigger("filter:changed").
 		Flash(hxcmp.FlashInfo, "Filters cleared")
 }

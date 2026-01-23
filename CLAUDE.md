@@ -32,9 +32,8 @@ hxcmp generate --dry-run ./...
 ### Core Types
 
 - `Component[P]` - Base type embedded by user components where P is the Props type
-- `Result[P]` - Handler return type with fluent builder for flash, redirect, callback, trigger
-- `Action` - Fluent builder for HTMX attributes (Target, Swap, Confirm, etc.)
-- `Callback` - Parent-child communication via serialized action references
+- `Result[P]` - Handler return type with fluent builder for flash, redirect, trigger
+- `WireAttrs()` - Generates minimal HTMX attributes (hx-get/hx-post + hx-vals)
 - `Registry` - Component manager that handles routing and CSRF protection
 
 ### Lifecycle Interfaces
@@ -73,7 +72,8 @@ func New(repo *ops.Repo) *FileViewer {
 
 The `hxcmp generate` command produces `*_hx.go` files containing:
 - Fast encoder/decoder for Props (implements Encodable/Decodable)
-- Typed action methods (e.g., Edit, Delete, Raw)
+- Wire methods (e.g., WireEdit, WireDelete) returning `templ.Attributes`
+- `WireRender` method for the default GET endpoint
 - `HXServeHTTP` dispatcher that routes requests to handlers
 
 Generated code eliminates reflection in the hot path.
@@ -87,7 +87,7 @@ return hxcmp.Err(props, err)                 // Error handling
 return hxcmp.Redirect[Props]("/dashboard")   // Client redirect
 return hxcmp.Skip[Props]()                   // Handler wrote own response
 return hxcmp.OK(props).Trigger("item-updated") // Broadcast event
-return hxcmp.OK(props).Callback(props.OnSave)  // Parent notification
+return hxcmp.OK(props).PushURL("/items?page=2") // Update browser URL
 ```
 
 ### File Layout
@@ -96,19 +96,17 @@ return hxcmp.OK(props).Callback(props.OnSave)  // Parent notification
 hxcmp/
 ├── component.go   # Component[P] generic type
 ├── registry.go    # Registry, routing, CSRF
-├── action.go      # Action fluent builder, ActionBuilder
+├── action.go      # ActionBuilder, WireAttrs()
 ├── result.go      # Result[P] type
-├── callback.go    # Callback type
 ├── encoder.go     # Signed/encrypted encoding
 ├── flash.go       # Flash messages, OOB swaps
-├── helpers.go     # IsHTMX(), etc.
+├── helpers.go     # IsHTMX(), BuildTriggerHeader(), etc.
 ├── errors.go      # Sentinel errors (IsNotFound, IsDecryptionError)
-├── swap.go        # SwapMode constants
 ├── testing.go     # TestRender, TestAction, TestRequestBuilder
 ├── interfaces.go  # Hydrater, Renderer, HXComponent interfaces
 ├── cmd/hxcmp/     # CLI: hxcmp generate/clean
 ├── lib/generator/ # Code generation AST parser
-└── ext/           # hxcmp-ext.js (callback and toast handling)
+└── ext/           # hxcmp-ext.js (event data injection, toast handling)
 ```
 
 ## Testing

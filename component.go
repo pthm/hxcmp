@@ -174,17 +174,6 @@ func (c *Component[P]) OnError() ErrorHandler {
 	return c.onError
 }
 
-// Refresh returns an action builder for the default render (GET).
-//
-// Use this to create refresh/reload actions that re-render the component
-// with updated props:
-//
-//	c.Refresh(props).Target("#content").Attrs()
-func (c *Component[P]) Refresh(props P) *Action {
-	path, encoded := c.buildActionURL("", props)
-	return NewActionWithProps(path, "GET", encoded)
-}
-
 // Lazy returns a templ component that defers rendering until viewport intersection.
 //
 // The placeholder renders immediately; the actual component loads when scrolled
@@ -239,16 +228,6 @@ func (c *Component[P]) buildActionURL(action string, props P) (path string, enco
 	}
 
 	return path, encoded
-}
-
-// buildURL constructs the full URL for an action with encoded props.
-// Deprecated: Use buildActionURL for new code.
-func (c *Component[P]) buildURL(action string, props P) string {
-	path, encoded := c.buildActionURL(action, props)
-	if encoded != "" {
-		return path + "?p=" + encoded
-	}
-	return path
 }
 
 // componentHash generates a deterministic hash based on component name and source location.

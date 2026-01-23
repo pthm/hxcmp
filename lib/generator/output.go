@@ -236,8 +236,6 @@ func encodeFieldCode(f PropField) string {
 			return fmt.Sprintf(`if p.%s != 0 { m["%s"] = p.%s }`, f.Name, key, f.Name)
 		case "time.Time":
 			return fmt.Sprintf(`if !p.%s.IsZero() { m["%s"] = p.%s.Format(time.RFC3339) }`, f.Name, key, f.Name)
-		case "hxcmp.Callback":
-			return fmt.Sprintf(`if !p.%s.IsZero() { m["%s"] = map[string]any{"u": p.%s.URL, "t": p.%s.Target, "s": p.%s.Swap} }`, f.Name, key, f.Name, f.Name, f.Name)
 		default:
 			return fmt.Sprintf(`m["%s"] = p.%s`, key, f.Name)
 		}
@@ -247,8 +245,6 @@ func encodeFieldCode(f PropField) string {
 	switch f.Type {
 	case "time.Time":
 		return fmt.Sprintf(`m["%s"] = p.%s.Format(time.RFC3339)`, key, f.Name)
-	case "hxcmp.Callback":
-		return fmt.Sprintf(`m["%s"] = map[string]any{"u": p.%s.URL, "t": p.%s.Target, "s": p.%s.Swap}`, key, f.Name, f.Name, f.Name)
 	default:
 		return fmt.Sprintf(`m["%s"] = p.%s`, key, f.Name)
 	}
@@ -293,8 +289,6 @@ func decodeFieldCode(f PropField) string {
 		return fmt.Sprintf(`if v, ok := m["%s"].(bool); ok { p.%s = v }`, key, f.Name)
 	case "time.Time":
 		return fmt.Sprintf(`if v, ok := m["%s"].(string); ok { if t, err := time.Parse(time.RFC3339, v); err == nil { p.%s = t } }`, key, f.Name)
-	case "hxcmp.Callback":
-		return fmt.Sprintf(`if v, ok := m["%s"].(map[string]any); ok { p.%s = hxcmp.CallbackFromMap(v) }`, key, f.Name)
 	default:
 		return fmt.Sprintf(`// TODO: decode %s of type %s`, f.Name, f.Type)
 	}
@@ -454,13 +448,9 @@ func (c *{{.Component.TypeName}}) handleResult(w http.ResponseWriter, r *http.Re
 		}
 		return
 	}
-	// Handle triggers (callback and/or event)
-	if triggerHeader := hxcmp.BuildTriggerHeader(result.GetCallback(), result.GetTrigger(), result.GetTriggerData()); triggerHeader != "" {
+	// Handle triggers
+	if triggerHeader := hxcmp.BuildTriggerHeader(result.GetTrigger(), result.GetTriggerData()); triggerHeader != "" {
 		w.Header().Set("HX-Trigger", triggerHeader)
-	}
-	// Handle after-settle triggers (for URL sync - fires after URL is updated)
-	if afterSettle := result.GetTriggerAfterSettle(); afterSettle != "" {
-		w.Header().Set("HX-Trigger-After-Settle", afterSettle)
 	}
 	if result.ShouldSkip() {
 		if status := result.GetStatus(); status != 0 {
@@ -481,11 +471,17 @@ func (c *{{.Component.TypeName}}) handleResult(w http.ResponseWriter, r *http.Re
 	}
 }
 
+// WireRender returns HTMX attributes for the default render (GET) endpoint.
+func (c *{{.Component.TypeName}}) WireRender(props {{.Component.PropsType}}) templ.Attributes {
+	path, encoded := c.buildActionURL("", props)
+	return hxcmp.WireAttrs(path, "GET", encoded)
+}
+
 {{range .Component.Actions}}
-// {{camelToTitle .Name}} returns an action builder for the "{{.Name}}" action.
-func (c *{{$.Component.TypeName}}) {{camelToTitle .Name}}(props {{$.Component.PropsType}}) *hxcmp.Action {
+// Wire{{camelToTitle .Name}} returns HTMX attributes for the "{{.Name}}" action.
+func (c *{{$.Component.TypeName}}) Wire{{camelToTitle .Name}}(props {{$.Component.PropsType}}) templ.Attributes {
 	path, encoded := c.buildActionURL("{{.Name}}", props)
-	return hxcmp.NewActionWithProps(path, "{{if eq .Method ""}}POST{{else}}{{.Method}}{{end}}", encoded)
+	return hxcmp.WireAttrs(path, "{{if eq .Method ""}}POST{{else}}{{.Method}}{{end}}", encoded)
 }
 {{end}}
 

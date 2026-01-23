@@ -51,7 +51,7 @@ go install github.com/pthm/hxcmp/cmd/hxcmp@latest
 
 ### Client extension
 
-Include the provided `hxcmp-ext.js` after HTMX in your layout. It handles event-driven communication, URL state sync, and toast notifications.
+Include the provided `hxcmp-ext.js` after HTMX in your layout. It handles event data injection and toast auto-dismiss.
 
 ```html
 <script src="https://unpkg.com/htmx.org"></script>
@@ -60,7 +60,7 @@ Include the provided `hxcmp-ext.js` after HTMX in your layout. It handles event-
 
 ## Code Generation
 
-`hxcmp generate` parses your component source files and produces `*_hx.go` files containing fast prop encoders/decoders, typed action methods, and HTTP dispatch logic. Generation must run before `templ generate`:
+`hxcmp generate` parses your component source files and produces `*_hx.go` files containing fast prop encoders/decoders, Wire methods, and HTTP dispatch logic. Generation must run before `templ generate`:
 
 ```bash
 hxcmp generate ./...   # produces *_hx.go files
@@ -129,11 +129,11 @@ c.Action("save", c.handleSave)
 c.Action("delete", c.handleDelete).Method(http.MethodDelete)
 ```
 
-Code generation produces typed builder methods (e.g. `c.Save(props)`, `c.Delete(props)`) that return an `*Action` fluent builder for HTMX attributes:
+Code generation produces Wire methods (e.g. `c.WireSave(props)`, `c.WireDelete(props)`) that return `templ.Attributes` with the minimal HTMX attributes. All other HTMX attributes are written directly in templates:
 
-```go
-// In a templ template
-<button { c.Save(props).Target("#form").Confirm("Save changes?").Attrs()... }>
+```html
+<!-- In a templ template -->
+<button { c.WireSave(props)... } hx-target="#form" hx-confirm="Save changes?">
     Save
 </button>
 ```
@@ -160,18 +160,22 @@ return hxcmp.Redirect[Props]("/dashboard")              // client redirect
 return hxcmp.Skip[Props]()                              // handler wrote its own response
 ```
 
-### Action Builder
+### Wire Methods
 
-The `*Action` fluent API maps directly to HTMX attributes:
+Generated Wire methods return minimal `templ.Attributes` containing only the HTTP
+method attribute and encoded props. All other HTMX attributes are written directly
+in templates:
 
-| Category | Methods |
-|----------|---------|
-| **Target** | `Target`, `TargetThis`, `TargetClosest`, `TargetFind`, `TargetNext`, `TargetPrevious` |
-| **Swap** | `Swap`, `SwapOuter`, `SwapInner`, `SwapBeforeEnd`, `SwapAfterEnd`, `SwapDelete`, `SwapNone` |
-| **Trigger** | `OnEvent`, `OnLoad`, `OnIntersect`, `Every` |
-| **UX** | `Confirm`, `Indicator`, `PushURL`, `Vals` |
-| **URL State** | `SyncURL` |
-| **Terminal** | `Attrs`, `AsLink`, `URL` |
+```html
+<button
+    { c.WireIncrement(props)... }
+    hx-target="#counter"
+    hx-swap="outerHTML"
+>+</button>
+```
+
+This keeps templates HTMX-native — you write standard HTMX attributes for targeting,
+swapping, triggers, confirms, etc.
 
 ### Component Communication
 
@@ -180,20 +184,16 @@ Components communicate through events, not direct references:
 ```go
 // Sender: broadcast after mutation
 return hxcmp.OK(props).Trigger("todo:changed")
-
-// Receiver: re-render when event fires
-c.Refresh(props).Target("#stats").OnEvent("todo:changed")
 ```
 
-### SyncURL
-
-Bind component state to URL query parameters for shareable, bookmarkable views:
-
-```go
-c.Refresh(props).Target("#list").SyncURL("status", "sort")
+```html
+<!-- Receiver: re-render when event fires -->
+<div { c.WireRender(props)... }
+     hx-target="#stats"
+     hx-swap="outerHTML"
+     hx-trigger="todo:changed from:body">
+</div>
 ```
-
-The client extension reads matching params from the URL and injects them into requests. Browser back/forward navigation automatically re-syncs.
 
 ### Lazy Loading
 

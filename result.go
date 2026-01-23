@@ -31,17 +31,15 @@ package hxcmp
 // communicate rendering intent to the framework. Errors are still errors
 // (via Err()), not control flow.
 type Result[P any] struct {
-	props              P
-	err                error
-	redirect           string
-	flashes            []Flash
-	trigger            string
-	triggerData        map[string]any
-	triggerAfterSettle string    // Event fired after swap settles (for URL sync)
-	callback           *Callback // Deprecated: use Trigger with data instead
-	headers            map[string]string
-	status             int
-	skip               bool
+	props       P
+	err         error
+	redirect    string
+	flashes     []Flash
+	trigger     string
+	triggerData map[string]any
+	headers     map[string]string
+	status      int
+	skip        bool
 }
 
 // OK creates a success result that will auto-render with the given props.
@@ -108,21 +106,6 @@ func (r Result[P]) Flash(level, message string) Result[P] {
 	return r
 }
 
-// Callback triggers a parent callback to enable child-to-parent communication.
-//
-// Deprecated: Use Trigger with data instead. The event-based approach is more
-// HTMX-native and decouples components. Callbacks will be removed in a future version.
-//
-//	// Old callback pattern:
-//	return hxcmp.OK(props).Callback(props.OnSave)
-//
-//	// New event pattern:
-//	return hxcmp.OK(props).Trigger("item:saved", map[string]any{"id": item.ID})
-func (r Result[P]) Callback(cb Callback) Result[P] {
-	r.callback = &cb
-	return r
-}
-
 // Trigger emits an event via HX-Trigger header for component communication.
 //
 // Other components can listen for this event using OnEvent():
@@ -133,8 +116,8 @@ func (r Result[P]) Callback(cb Callback) Result[P] {
 //	// Emitter (with data - listeners receive as request params):
 //	return hxcmp.OK(props).Trigger("filter:changed", map[string]any{"status": "active"})
 //
-//	// Listener (in template):
-//	c.Refresh(props).OnEvent("filter:changed").Attrs()
+//	// Listener (in template, raw HTMX):
+//	<div { c.WireRender(props)... } hx-trigger="filter:changed from:body">
 //
 // When data is provided, it's sent as part of the HX-Trigger header and
 // automatically injected into listener requests as parameters by the
@@ -151,32 +134,9 @@ func (r Result[P]) Trigger(event string, data ...map[string]any) Result[P] {
 
 // PushURL updates the browser URL via HX-Push-Url header.
 //
-// Use this when an action changes shared URL state. Combined with TriggerURLSync,
-// this enables React-like reactivity where URL is the shared state:
-//
-//	return hxcmp.OK(props).
-//	    PushURL("/todos?status=pending").
-//	    TriggerURLSync()
-//
-// Components using SyncURL() will automatically refresh and read the new URL params.
+//	return hxcmp.OK(props).PushURL("/todos?status=pending")
 func (r Result[P]) PushURL(url string) Result[P] {
 	return r.Header("HX-Push-Url", url)
-}
-
-// TriggerURLSync emits the "url:sync" event to refresh all URL-bound components.
-//
-// Components with SyncURL() listen for this event and re-render, reading their
-// state from the browser's current URL. Use after PushURL to notify components:
-//
-//	return hxcmp.OK(props).
-//	    PushURL("/todos?status=pending").
-//	    TriggerURLSync()
-//
-// This uses HX-Trigger-After-Settle to ensure the URL is updated before
-// the event fires, preventing race conditions where components read stale URLs.
-func (r Result[P]) TriggerURLSync() Result[P] {
-	r.triggerAfterSettle = "url:sync"
-	return r
 }
 
 // Header sets a custom response header.
@@ -231,18 +191,6 @@ func (r Result[P]) GetTrigger() string {
 // GetTriggerData returns the trigger event data.
 func (r Result[P]) GetTriggerData() map[string]any {
 	return r.triggerData
-}
-
-// GetTriggerAfterSettle returns the after-settle trigger event name.
-func (r Result[P]) GetTriggerAfterSettle() string {
-	return r.triggerAfterSettle
-}
-
-// GetCallback returns the callback.
-//
-// Deprecated: Callbacks are deprecated in favor of Trigger with data.
-func (r Result[P]) GetCallback() *Callback {
-	return r.callback
 }
 
 // GetHeaders returns the response headers.

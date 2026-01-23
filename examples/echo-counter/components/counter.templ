@@ -7,17 +7,23 @@ templ counterTemplate(c *Counter, props CounterProps) {
 		<div class="count">{ fmt.Sprintf("%d", props.Count) }</div>
 		<div class="actions">
 			<button
-				{ c.Decrement(props).Target("#counter").SwapOuter().Attrs()... }
+				{ c.WireDecrement(props)... }
+				hx-target="#counter"
+				hx-swap="outerHTML"
 			>
 				-
 			</button>
 			<button
-				{ c.Reset(props).Target("#counter").SwapOuter().Attrs()... }
+				{ c.WireReset(props)... }
+				hx-target="#counter"
+				hx-swap="outerHTML"
 			>
 				Reset
 			</button>
 			<button
-				{ c.Increment(props).Target("#counter").SwapOuter().Attrs()... }
+				{ c.WireIncrement(props)... }
+				hx-target="#counter"
+				hx-swap="outerHTML"
 			>
 				+
 			</button>

@@ -1,12 +1,16 @@
 package components
 
 templ todoListTemplate(props TodoListProps) {
-	// SyncURL reads "status" from browser URL when url:sync fires
-	// Also listen for todo events to refresh when items change
+	// Listen for filter and todo events to refresh the list.
+	// hx-vals with js: reads the current URL status param dynamically.
 	<div
 		id="todo-list"
 		class="todo-list"
-		{ TodoListCmp().Refresh(props).Target("#todo-list").SyncURL("status").OnEvent("todo:added").OnEvent("todo:changed").Attrs()... }
+		{ TodoListCmp().WireRefresh(props)... }
+		hx-target="#todo-list"
+		hx-swap="outerHTML"
+		hx-trigger="filter:changed from:body, todo:added from:body, todo:changed from:body"
+		hx-vals={ `js:{status: new URL(location.href).searchParams.get("status") || ""}` }
 	>
 		if len(props.Todos) == 0 {
 			<div class="empty-state">
@@ -31,9 +35,12 @@ templ todoItemInList(listProps TodoListProps, todo *Todo) {
 			<div class="todo-checkbox">
 				<button
 					class="toggle-btn"
-					{ TodoItemCmp().Toggle(TodoItemProps{
+					{ TodoItemCmp().WireToggle(TodoItemProps{
 						TodoID: todo.ID,
-					}).TargetClosest(".todo-item-wrapper").Indicator(".toggle-btn").Attrs()... }
+					})... }
+					hx-target={ "#todo-wrapper-" + todo.ID }
+					hx-swap="outerHTML"
+					hx-indicator=".toggle-btn"
 				>
 					if todo.IsCompleted() {
 						<span class="check">&#10003;</span>
@@ -61,9 +68,13 @@ templ todoItemInList(listProps TodoListProps, todo *Todo) {
 			<div class="todo-actions">
 				<button
 					class="delete-btn"
-					{ TodoItemCmp().Delete(TodoItemProps{
+					{ TodoItemCmp().WireDelete(TodoItemProps{
 						TodoID: todo.ID,
-					}).TargetClosest(".todo-item-wrapper").SwapDelete().Confirm("Are you sure you want to delete this todo?").Indicator(".delete-btn").Attrs()... }
+					})... }
+					hx-target={ "#todo-wrapper-" + todo.ID }
+					hx-swap="delete"
+					hx-confirm="Are you sure you want to delete this todo?"
+					hx-indicator=".delete-btn"
 				>
 					&times;
 				</button>

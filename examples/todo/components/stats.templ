@@ -6,7 +6,10 @@ templ statsTemplate(c *Stats, props StatsProps) {
 	<div
 		id="stats"
 		class="stats"
-		{ c.RefreshAction(props).Target("#stats").SwapOuter().Attrs()... }
+		{ c.WireRender(props)... }
+		hx-target="#stats"
+		hx-swap="outerHTML"
+		hx-trigger="every 5s, todo:added from:body, todo:changed from:body"
 	>
 		<h3>Statistics</h3>
 		<div class="stats-grid">

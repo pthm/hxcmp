@@ -2,7 +2,6 @@ package components
 
 import (
 	"context"
-	"time"
 
 	"github.com/a-h/templ"
 	"github.com/pthm/hxcmp"
@@ -39,10 +38,4 @@ func (c *Stats) Hydrate(ctx context.Context, props *StatsProps) error {
 // Render produces the HTML output.
 func (c *Stats) Render(ctx context.Context, props StatsProps) templ.Component {
 	return statsTemplate(c, props)
-}
-
-// RefreshAction returns an action for polling refresh.
-// Also listens for todo:added events for immediate updates.
-func (c *Stats) RefreshAction(props StatsProps) *hxcmp.Action {
-	return c.Refresh(props).Every(5 * time.Second).OnEvent("todo:added")
 }
