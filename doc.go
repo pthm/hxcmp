@@ -53,19 +53,13 @@
 //
 // # Component Communication
 //
-// Components communicate through events and flash messages:
-//
-// 1. Events: Broadcast events via HX-Trigger for loose coupling
+// Components communicate through events via HX-Trigger for loose coupling:
 //
 //	// Emitter sends event with data:
 //	return hxcmp.OK(props).Trigger("item:saved", map[string]any{"id": item.ID})
 //
 //	// Listener responds to event in template (raw HTMX):
 //	<div { c.WireRender(props)... } hx-trigger="item:saved from:body">
-//
-// 2. Flash messages: One-time notifications rendered as OOB swaps
-//
-//	return hxcmp.OK(props).Flash("success", "Saved!")
 //
 // Events decouple components - the emitter doesn't know who's listening.
 //

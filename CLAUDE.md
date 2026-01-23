@@ -32,7 +32,7 @@ hxcmp generate --dry-run ./...
 ### Core Types
 
 - `Component[P]` - Base type embedded by user components where P is the Props type
-- `Result[P]` - Handler return type with fluent builder for flash, redirect, trigger
+- `Result[P]` - Handler return type with fluent builder for redirect, trigger, headers
 - `WireAttrs()` - Generates minimal HTMX attributes (hx-get/hx-post + hx-vals)
 - `Registry` - Component manager that handles routing and CSRF protection
 
@@ -82,7 +82,6 @@ Generated code eliminates reflection in the hot path.
 
 ```go
 return hxcmp.OK(props)                       // Auto-render with props
-return hxcmp.OK(props).Flash("success", "Saved!")
 return hxcmp.Err(props, err)                 // Error handling
 return hxcmp.Redirect[Props]("/dashboard")   // Client redirect
 return hxcmp.Skip[Props]()                   // Handler wrote own response
@@ -99,14 +98,12 @@ hxcmp/
 ├── action.go      # ActionBuilder, WireAttrs()
 ├── result.go      # Result[P] type
 ├── encoder.go     # Signed/encrypted encoding
-├── flash.go       # Flash messages, OOB swaps
 ├── helpers.go     # IsHTMX(), BuildTriggerHeader(), etc.
 ├── errors.go      # Sentinel errors (IsNotFound, IsDecryptionError)
 ├── testing.go     # TestRender, TestAction, TestRequestBuilder
 ├── interfaces.go  # Hydrater, Renderer, HXComponent interfaces
 ├── cmd/hxcmp/     # CLI: hxcmp generate/clean
-├── lib/generator/ # Code generation AST parser
-└── ext/           # hxcmp-ext.js (event data injection, toast handling)
+└── lib/generator/ # Code generation AST parser
 ```
 
 ## Testing
@@ -119,7 +116,6 @@ result.HTMLContains("expected text")
 
 result, err := hxcmp.TestAction(comp, url, "POST", formData)
 result.IsOK()
-result.HasFlash("success", "Saved!")
 result.HasEvent("item-updated")
 result.WasRedirected()
 ```

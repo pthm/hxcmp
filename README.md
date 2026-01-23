@@ -49,15 +49,6 @@ go get github.com/pthm/hxcmp
 go install github.com/pthm/hxcmp/cmd/hxcmp@latest
 ```
 
-### Client extension
-
-Include the provided `hxcmp-ext.js` after HTMX in your layout. It handles event data injection and toast auto-dismiss.
-
-```html
-<script src="https://unpkg.com/htmx.org"></script>
-<script src="/static/hxcmp-ext.js"></script>
-```
-
 ## Code Generation
 
 `hxcmp generate` parses your component source files and produces `*_hx.go` files containing fast prop encoders/decoders, Wire methods, and HTTP dispatch logic. Generation must run before `templ generate`:
@@ -152,7 +143,6 @@ Handlers return `Result[P]`, a fluent builder for the response:
 
 ```go
 return hxcmp.OK(props)                                  // re-render with updated props
-return hxcmp.OK(props).Flash("success", "Saved!")       // with toast notification
 return hxcmp.OK(props).Trigger("item:changed")          // broadcast event
 return hxcmp.OK(props).PushURL("/items/42")             // update browser URL
 return hxcmp.Err(props, err)                            // error response
@@ -204,16 +194,6 @@ c.Lazy(props, placeholder)  // loads on intersection
 c.Defer(props, placeholder) // loads immediately after page
 ```
 
-### Flash Messages
-
-Toast notifications rendered via HTMX out-of-band swaps:
-
-```go
-return hxcmp.OK(props).Flash(hxcmp.FlashSuccess, "Item saved!")
-```
-
-Add `hxcmp.ToastContainer()` to your layout to receive them.
-
 ## Security
 
 - **Prop integrity**: Props are HMAC-signed by default. Use `.Sensitive()` for AES encryption.
@@ -232,7 +212,6 @@ result.HTMLContains("expected text")
 // Test action handlers
 result, err := hxcmp.TestAction(comp, actionURL, "POST", formData)
 result.IsOK()
-result.HasFlash("success", "Saved!")
 result.HasEvent("item:changed")
 result.WasRedirected()
 ```

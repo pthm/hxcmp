@@ -50,7 +50,7 @@ func (c *AddTodo) handleAdd(ctx context.Context, props AddTodoProps, r *http.Req
 	description := strings.TrimSpace(r.FormValue("description"))
 
 	if title == "" {
-		return hxcmp.OK(props).Flash(hxcmp.FlashError, "Title is required")
+		return hxcmp.OK(props)
 	}
 
 	// Parse tags
@@ -62,7 +62,5 @@ func (c *AddTodo) handleAdd(ctx context.Context, props AddTodoProps, r *http.Req
 	c.store.Add(title, description, tags)
 
 	// Emit event so listeners (TodoList, Stats) can refresh
-	return hxcmp.OK(props).
-		Flash(hxcmp.FlashSuccess, "Todo added!").
-		Trigger("todo:added")
+	return hxcmp.OK(props).Trigger("todo:added")
 }

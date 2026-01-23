@@ -2,18 +2,15 @@ package hxcmp
 
 // Result[P] is returned from action handlers to control rendering and side effects.
 //
-// Result is a fluent builder that enables handlers to specify flash messages,
-// redirects, events, and custom headers without writing directly to the
-// ResponseWriter. The framework processes the Result after the handler
-// returns, applying headers and calling Render as appropriate.
+// Result is a fluent builder that enables handlers to specify redirects,
+// events, and custom headers without writing directly to the ResponseWriter.
+// The framework processes the Result after the handler returns, applying
+// headers and calling Render as appropriate.
 //
 // Example patterns:
 //
 //	// Success - auto-render with updated props
 //	return hxcmp.OK(props)
-//
-//	// Success with flash message
-//	return hxcmp.OK(props).Flash("success", "Saved!")
 //
 //	// Error with fallback render
 //	return hxcmp.Err(props, err)
@@ -31,11 +28,10 @@ package hxcmp
 // communicate rendering intent to the framework. Errors are still errors
 // (via Err()), not control flow.
 type Result[P any] struct {
-	props       P
-	err         error
-	redirect    string
-	flashes     []Flash
-	trigger     string
+	props    P
+	err      error
+	redirect string
+	trigger  string
 	triggerData map[string]any
 	headers     map[string]string
 	status      int
@@ -88,40 +84,16 @@ func Redirect[P any](url string) Result[P] {
 	return Result[P]{props: zero, redirect: url}
 }
 
-// Flash adds a flash message (toast notification) to the result.
-//
-// Flash messages are rendered as out-of-band (OOB) swaps that append
-// to the #toasts container. Levels typically include "success", "error",
-// "warning", "info" (see FlashSuccess, FlashError constants).
-//
-//	return hxcmp.OK(props).Flash("success", "Item saved!")
-//
-// Multiple flashes can be chained:
-//
-//	return hxcmp.OK(props).
-//	    Flash("success", "Primary action completed").
-//	    Flash("info", "Notification sent")
-func (r Result[P]) Flash(level, message string) Result[P] {
-	r.flashes = append(r.flashes, Flash{Level: level, Message: message})
-	return r
-}
-
 // Trigger emits an event via HX-Trigger header for component communication.
-//
-// Other components can listen for this event using OnEvent():
 //
 //	// Emitter (no data):
 //	return hxcmp.OK(props).Trigger("item-updated")
 //
-//	// Emitter (with data - listeners receive as request params):
+//	// Emitter (with data - available as event.detail on the client):
 //	return hxcmp.OK(props).Trigger("filter:changed", map[string]any{"status": "active"})
 //
 //	// Listener (in template, raw HTMX):
 //	<div { c.WireRender(props)... } hx-trigger="filter:changed from:body">
-//
-// When data is provided, it's sent as part of the HX-Trigger header and
-// automatically injected into listener requests as parameters by the
-// hxcmp JavaScript extension.
 //
 // This pattern decouples components - the emitter doesn't know who's listening.
 func (r Result[P]) Trigger(event string, data ...map[string]any) Result[P] {
@@ -176,11 +148,6 @@ func (r Result[P]) GetErr() error {
 // GetRedirect returns the redirect URL.
 func (r Result[P]) GetRedirect() string {
 	return r.redirect
-}
-
-// GetFlashes returns the flash messages.
-func (r Result[P]) GetFlashes() []Flash {
-	return r.flashes
 }
 
 // GetTrigger returns the trigger event name.

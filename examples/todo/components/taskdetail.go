@@ -68,7 +68,7 @@ func (c *TaskDetail) handleUpdate(ctx context.Context, props TaskDetailProps, r 
 		return hxcmp.Err(props, hxcmp.ErrNotFound)
 	}
 
-	return hxcmp.OK(props).Flash(hxcmp.FlashSuccess, "Todo updated!").Trigger("todo-updated")
+	return hxcmp.OK(props).Trigger("todo-updated")
 }
 
 // handleToggle toggles the todo's status.
@@ -76,7 +76,7 @@ func (c *TaskDetail) handleToggle(ctx context.Context, props TaskDetailProps, r 
 	if !c.store.Toggle(props.TodoID) {
 		return hxcmp.Err(props, hxcmp.ErrNotFound)
 	}
-	return hxcmp.OK(props).Flash(hxcmp.FlashSuccess, "Status updated!")
+	return hxcmp.OK(props)
 }
 
 // handleDelete deletes the todo and redirects to list.
@@ -84,7 +84,7 @@ func (c *TaskDetail) handleDelete(ctx context.Context, props TaskDetailProps, r 
 	if !c.store.Delete(props.TodoID) {
 		return hxcmp.Err(props, hxcmp.ErrNotFound)
 	}
-	return hxcmp.Redirect[TaskDetailProps]("/").Flash(hxcmp.FlashSuccess, "Todo deleted!")
+	return hxcmp.Redirect[TaskDetailProps]("/")
 }
 
 // handleEditTitle switches to title editing mode.
@@ -103,7 +103,7 @@ func (c *TaskDetail) handleSaveTitle(ctx context.Context, props TaskDetailProps,
 	if title == "" {
 		// Keep in edit mode on validation error
 		props.EditingTitle = true
-		return hxcmp.OK(props).Flash(hxcmp.FlashError, "Title cannot be empty")
+		return hxcmp.OK(props)
 	}
 
 	// Update only the title (preserve description and tags)
@@ -114,7 +114,7 @@ func (c *TaskDetail) handleSaveTitle(ctx context.Context, props TaskDetailProps,
 	// Exit edit mode - Hydrate runs automatically before render to refresh Todo
 	props.EditingTitle = false
 
-	return hxcmp.OK(props).Flash(hxcmp.FlashSuccess, "Title updated!").Trigger("todo-updated")
+	return hxcmp.OK(props).Trigger("todo-updated")
 }
 
 // handleCancelEdit exits title editing mode without saving.

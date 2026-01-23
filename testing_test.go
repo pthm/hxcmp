@@ -369,48 +369,6 @@ func TestTestResult_HasEvent(t *testing.T) {
 	}
 }
 
-func TestTestResult_HasFlash(t *testing.T) {
-	result := &TestResult{
-		Flashes: []Flash{
-			{Level: "success", Message: "Item saved"},
-			{Level: "error", Message: "Validation failed"},
-		},
-	}
-
-	if !result.HasFlash("success", "Item saved") {
-		t.Error("expected HasFlash to find success flash")
-	}
-
-	if !result.HasFlash("error", "Validation failed") {
-		t.Error("expected HasFlash to find error flash")
-	}
-
-	if result.HasFlash("success", "Wrong message") {
-		t.Error("expected HasFlash to not find flash with wrong message")
-	}
-
-	if result.HasFlash("warning", "Item saved") {
-		t.Error("expected HasFlash to not find flash with wrong level")
-	}
-}
-
-func TestTestResult_HasFlashLevel(t *testing.T) {
-	result := &TestResult{
-		Flashes: []Flash{
-			{Level: "success", Message: "Done"},
-			{Level: "info", Message: "Info"},
-		},
-	}
-
-	if !result.HasFlashLevel("success") {
-		t.Error("expected HasFlashLevel to find success")
-	}
-
-	if result.HasFlashLevel("error") {
-		t.Error("expected HasFlashLevel to not find error")
-	}
-}
-
 func TestTestResult_WasRedirected(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -536,36 +494,6 @@ func TestParseTriggerHeader_Empty(t *testing.T) {
 	events = parseTriggerHeader("   ")
 	if events != nil {
 		t.Errorf("expected nil for whitespace string, got %v", events)
-	}
-}
-
-func TestParseFlashesFromHTML(t *testing.T) {
-	html := `<div id="toasts" hx-swap-oob="beforeend">` +
-		`<div class="toast toast-success" data-auto-dismiss="3000">Item saved</div>` +
-		`<div class="toast toast-error" data-auto-dismiss="3000">Error occurred</div>` +
-		`</div>`
-
-	flashes := parseFlashesFromHTML(html)
-
-	if len(flashes) != 2 {
-		t.Fatalf("expected 2 flashes, got %d", len(flashes))
-	}
-
-	if flashes[0].Level != "success" || flashes[0].Message != "Item saved" {
-		t.Errorf("flash[0] = %+v, want success/Item saved", flashes[0])
-	}
-
-	if flashes[1].Level != "error" || flashes[1].Message != "Error occurred" {
-		t.Errorf("flash[1] = %+v, want error/Error occurred", flashes[1])
-	}
-}
-
-func TestParseFlashesFromHTML_NoFlashes(t *testing.T) {
-	html := `<div>No flashes here</div>`
-	flashes := parseFlashesFromHTML(html)
-
-	if len(flashes) != 0 {
-		t.Errorf("expected 0 flashes, got %d", len(flashes))
 	}
 }
 

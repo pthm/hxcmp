@@ -14,13 +14,12 @@ import (
 // TestResult holds the result of rendering a component for testing.
 //
 // Provides convenience methods for asserting on HTML content, headers,
-// status codes, events, flashes, and redirects.
+// status codes, events, and redirects.
 type TestResult struct {
 	HTML            string
 	StatusCode      int
 	Headers         http.Header
 	TriggeredEvents []string
-	Flashes         []Flash
 	RedirectURL     string
 }
 
@@ -152,9 +151,6 @@ func TestAction(
 		result.RedirectURL = redirect
 	}
 
-	// Parse flashes from the HTML (they appear as OOB swaps)
-	result.Flashes = parseFlashesFromHTML(result.HTML)
-
 	return result, nil
 }
 
@@ -212,9 +208,6 @@ func TestActionWithContext(
 		result.RedirectURL = redirect
 	}
 
-	// Parse flashes from the HTML (they appear as OOB swaps)
-	result.Flashes = parseFlashesFromHTML(result.HTML)
-
 	return result, nil
 }
 
@@ -267,26 +260,6 @@ func (r *TestResult) HTMLContainsAny(substrs ...string) bool {
 func (r *TestResult) HasEvent(event string) bool {
 	for _, e := range r.TriggeredEvents {
 		if strings.Contains(e, event) {
-			return true
-		}
-	}
-	return false
-}
-
-// HasFlash checks if a flash message was set with the given level and message.
-func (r *TestResult) HasFlash(level, message string) bool {
-	for _, f := range r.Flashes {
-		if f.Level == level && f.Message == message {
-			return true
-		}
-	}
-	return false
-}
-
-// HasFlashLevel checks if any flash message was set with the given level.
-func (r *TestResult) HasFlashLevel(level string) bool {
-	for _, f := range r.Flashes {
-		if f.Level == level {
 			return true
 		}
 	}
@@ -394,53 +367,6 @@ func parseTriggerHeader(trigger string) []string {
 	return events
 }
 
-// parseFlashesFromHTML extracts flash messages from OOB swap HTML.
-// Looks for patterns like: <div class="toast toast-success" ...>message</div>
-func parseFlashesFromHTML(html string) []Flash {
-	var flashes []Flash
-
-	// Find all toast divs
-	const prefix = `<div class="toast toast-`
-	idx := 0
-	for {
-		start := strings.Index(html[idx:], prefix)
-		if start == -1 {
-			break
-		}
-		start += idx + len(prefix)
-
-		// Extract level (until the next quote)
-		levelEnd := strings.Index(html[start:], `"`)
-		if levelEnd == -1 {
-			break
-		}
-		level := html[start : start+levelEnd]
-
-		// Find the closing > of the opening tag
-		tagEnd := strings.Index(html[start:], ">")
-		if tagEnd == -1 {
-			break
-		}
-		contentStart := start + tagEnd + 1
-
-		// Find the closing </div>
-		contentEnd := strings.Index(html[contentStart:], "</div>")
-		if contentEnd == -1 {
-			break
-		}
-		message := html[contentStart : contentStart+contentEnd]
-
-		flashes = append(flashes, Flash{
-			Level:   level,
-			Message: message,
-		})
-
-		idx = contentStart + contentEnd
-	}
-
-	return flashes
-}
-
 // TestRequestBuilder provides a fluent interface for building test requests.
 //
 // Use this when you need fine-grained control over request construction:
@@ -545,9 +471,6 @@ func (b *TestRequestBuilder) Execute(comp HXComponent) (*TestResult, error) {
 	if redirect := rec.Header().Get("HX-Redirect"); redirect != "" {
 		result.RedirectURL = redirect
 	}
-
-	// Parse flashes
-	result.Flashes = parseFlashesFromHTML(result.HTML)
 
 	return result, nil
 }

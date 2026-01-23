@@ -760,67 +760,6 @@ body {
   text-decoration: underline;
 }
 
-/* Toast Container */
-.toast-container {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.toast {
-  padding: 12px 20px;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  font-size: 0.875rem;
-  animation: slideIn 0.3s ease;
-}
-
-.toast-success {
-  background: var(--color-success);
-  color: white;
-}
-
-.toast-error {
-  background: var(--color-danger);
-  color: white;
-}
-
-.toast-warning {
-  background: var(--color-warning);
-  color: white;
-}
-
-.toast-info {
-  background: var(--color-info);
-  color: white;
-}
-
-.toast-fade-out {
-  animation: fadeOut 0.3s ease forwards;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes fadeOut {
-  to {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-}
-
 /* HTMX Loading Indicator */
 .htmx-request {
   opacity: 0.5;

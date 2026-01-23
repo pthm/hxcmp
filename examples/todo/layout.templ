@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/pthm/hxcmp"
 	"github.com/pthm/hxcmp/examples/todo/components"
 )
 
@@ -17,7 +16,6 @@ templ Layout(status string) {
 			<title>Todo App - hxcmp Example</title>
 			<link rel="stylesheet" href="/static/styles.css"/>
 			<script src="https://unpkg.com/htmx.org@2.0.0"></script>
-			<script src="/static/hxcmp-ext.js"></script>
 		</head>
 		<body>
 			<div class="app">
@@ -46,7 +44,6 @@ templ Layout(status string) {
 					</main>
 				</div>
 			</div>
-			@hxcmp.ToastContainer()
 		</body>
 	</html>
 }
@@ -61,7 +58,6 @@ templ TaskDetailLayout(todoID string) {
 			<title>Task Detail - hxcmp Example</title>
 			<link rel="stylesheet" href="/static/styles.css"/>
 			<script src="https://unpkg.com/htmx.org@2.0.0"></script>
-			<script src="/static/hxcmp-ext.js"></script>
 		</head>
 		<body>
 			<div class="app">
@@ -75,7 +71,6 @@ templ TaskDetailLayout(todoID string) {
 					@components.TaskDetailCmp().RenderHydrated(ctx, components.TaskDetailProps{TodoID: todoID})
 				</main>
 			</div>
-			@hxcmp.ToastContainer()
 		</body>
 	</html>
 }

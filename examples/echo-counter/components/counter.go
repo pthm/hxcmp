@@ -52,5 +52,5 @@ func (c *Counter) handleDecrement(ctx context.Context, props CounterProps, r *ht
 
 func (c *Counter) handleReset(ctx context.Context, props CounterProps, r *http.Request) hxcmp.Result[CounterProps] {
 	props.Count = 0
-	return hxcmp.OK(props).Flash(hxcmp.FlashSuccess, "Counter reset!")
+	return hxcmp.OK(props)
 }

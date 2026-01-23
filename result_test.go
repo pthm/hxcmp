@@ -60,32 +60,6 @@ func TestResultRedirect(t *testing.T) {
 	}
 }
 
-func TestResultFlash(t *testing.T) {
-	props := testResultProps{ID: 1}
-	r := OK(props).
-		Flash(FlashSuccess, "Item saved").
-		Flash(FlashError, "But something else failed")
-
-	flashes := r.GetFlashes()
-	if len(flashes) != 2 {
-		t.Fatalf("len(GetFlashes()) = %d, want 2", len(flashes))
-	}
-
-	if flashes[0].Level != FlashSuccess {
-		t.Errorf("flashes[0].Level = %q, want %q", flashes[0].Level, FlashSuccess)
-	}
-	if flashes[0].Message != "Item saved" {
-		t.Errorf("flashes[0].Message = %q, want %q", flashes[0].Message, "Item saved")
-	}
-
-	if flashes[1].Level != FlashError {
-		t.Errorf("flashes[1].Level = %q, want %q", flashes[1].Level, FlashError)
-	}
-	if flashes[1].Message != "But something else failed" {
-		t.Errorf("flashes[1].Message = %q, want %q", flashes[1].Message, "But something else failed")
-	}
-}
-
 func TestResultTrigger(t *testing.T) {
 	props := testResultProps{ID: 1}
 	r := OK(props).Trigger("itemUpdated")
@@ -122,14 +96,10 @@ func TestResultStatus(t *testing.T) {
 func TestResultChaining(t *testing.T) {
 	props := testResultProps{ID: 1, Name: "test"}
 	r := OK(props).
-		Flash(FlashSuccess, "Saved!").
 		Trigger("itemSaved").
 		Header("X-Item-ID", "1").
 		Status(201)
 
-	if len(r.GetFlashes()) != 1 {
-		t.Error("Flash not set")
-	}
 	if r.GetTrigger() != "itemSaved" {
 		t.Error("Trigger not set")
 	}
@@ -153,9 +123,6 @@ func TestResultDefaultValues(t *testing.T) {
 	}
 	if r.GetRedirect() != "" {
 		t.Error("Default redirect should be empty")
-	}
-	if len(r.GetFlashes()) != 0 {
-		t.Error("Default flashes should be empty")
 	}
 	if r.GetTrigger() != "" {
 		t.Error("Default trigger should be empty")

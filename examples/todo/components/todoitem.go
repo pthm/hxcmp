@@ -50,9 +50,7 @@ func (c *TodoItem) handleToggle(ctx context.Context, props TodoItemProps, r *htt
 		return hxcmp.Err(props, hxcmp.ErrNotFound)
 	}
 
-	return hxcmp.OK(props).
-		Flash(hxcmp.FlashSuccess, "Todo updated!").
-		Trigger("todo:changed")
+	return hxcmp.OK(props).Trigger("todo:changed")
 }
 
 // handleDelete removes the todo.
@@ -61,9 +59,7 @@ func (c *TodoItem) handleDelete(ctx context.Context, props TodoItemProps, r *htt
 		return hxcmp.Err(props, hxcmp.ErrNotFound)
 	}
 
-	return hxcmp.OK(props).
-		Flash(hxcmp.FlashSuccess, "Todo deleted!").
-		Trigger("todo:changed")
+	return hxcmp.OK(props).Trigger("todo:changed")
 }
 
 // handleEdit updates the todo's title and description.
@@ -79,7 +75,5 @@ func (c *TodoItem) handleEdit(ctx context.Context, props TodoItemProps, r *http.
 		return hxcmp.Err(props, hxcmp.ErrNotFound)
 	}
 
-	return hxcmp.OK(props).
-		Flash(hxcmp.FlashSuccess, "Todo updated!").
-		Trigger("todo:changed")
+	return hxcmp.OK(props).Trigger("todo:changed")
 }

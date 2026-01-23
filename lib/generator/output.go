@@ -442,10 +442,6 @@ func (c *{{.Component.TypeName}}) handleResult(w http.ResponseWriter, r *http.Re
 		if status := result.GetStatus(); status != 0 {
 			w.WriteHeader(status)
 		}
-		// Still render flashes on redirect
-		if flashes := result.GetFlashes(); len(flashes) > 0 {
-			w.Write([]byte(hxcmp.RenderFlashesOOB(flashes)))
-		}
 		return
 	}
 	// Handle triggers
@@ -465,10 +461,6 @@ func (c *{{.Component.TypeName}}) handleResult(w http.ResponseWriter, r *http.Re
 	}
 	tmpl := c.Render(r.Context(), result.GetProps())
 	tmpl.Render(r.Context(), w)
-	// Append flash OOB swap
-	if flashes := result.GetFlashes(); len(flashes) > 0 {
-		w.Write([]byte(hxcmp.RenderFlashesOOB(flashes)))
-	}
 }
 
 // WireRender returns HTMX attributes for the default render (GET) endpoint.

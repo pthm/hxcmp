@@ -69,6 +69,5 @@ func (c *Sidebar) handleClear(ctx context.Context, props SidebarProps, r *http.R
 	// Push clean URL and trigger event
 	return hxcmp.OK(props).
 		PushURL("/").
-		Trigger("filter:changed").
-		Flash(hxcmp.FlashInfo, "Filters cleared")
+		Trigger("filter:changed")
 }
