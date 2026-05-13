@@ -5,7 +5,7 @@ go 1.23.0
 require (
 	github.com/a-h/templ v0.3.977
 	github.com/labstack/echo/v4 v4.13.3
-	github.com/pthm/hxcmp v0.0.0
+	github.com/pthm/hxcmp v0.1.2
 )
 
 require (
@@ -21,5 +21,3 @@ require (
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.27.0 // indirect
 )
-
-replace github.com/pthm/hxcmp => ../../
